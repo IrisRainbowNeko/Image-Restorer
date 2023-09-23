@@ -10,7 +10,7 @@ device = 'cuda'
 
 class Infer:
     def __init__(self, ckpt):
-        self.net = NAFNet()
+        self.net = NAFNet(enc_blk_nums=[1,2,4,8], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
         self.net.load_state_dict(torch.load(ckpt))
         self.net = self.net.to(device)
 
@@ -37,7 +37,7 @@ class Infer:
         img = img.unsqueeze(0)
         pred = self.net(img)
         pred = pred*self.std+self.mean
-        pred = pred.squeeze(0)
+        pred = pred.squeeze(0).clip(0,1)
 
         pred = transforms.ToPILImage()(pred)
         return pred
