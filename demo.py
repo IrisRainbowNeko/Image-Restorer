@@ -12,6 +12,7 @@ class Infer:
     def __init__(self, ckpt):
         self.net = NAFNet()
         self.net.load_state_dict(torch.load(ckpt))
+        self.net = self.net.to(device)
 
         self.trans = transforms.Compose([
             transforms.Resize(800),
