@@ -1,9 +1,10 @@
-from torchvision import transforms
+from argparse import ArgumentParser
+
 import torch
+from PIL import Image
+from torchvision import transforms
 
 from models import NAFNet
-from argparse import ArgumentParser
-from PIL import Image
 
 device = 'cuda'
 
@@ -14,7 +15,7 @@ class Infer:
 
         self.trans = transforms.Compose([
             transforms.Resize(800),
-            #transforms.CenterCrop(800),
+            # transforms.CenterCrop(800),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
         ])
@@ -31,6 +32,7 @@ class Infer:
 
     def infer_one(self, path):
         img = self.load_image(path).to(device)
+        img = img.unsqueeze(0)
         pred = self.net(img)
         pred = pred*self.std+self.mean
 
