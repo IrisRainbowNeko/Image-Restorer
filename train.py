@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 from loguru import logger
 import datetime
 from models import NAFNet
+from PIL import Image
 
 from accelerate import Accelerator
 from accelerate.utils import set_seed
@@ -51,20 +52,22 @@ class Trainer:
 
         self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr)
         self.criterion = nn.SmoothL1Loss()
+        print(len(self.train_loader))
 
         self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
                                             steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
                                             pct_start=0.05)
 
     def build_data(self):
-        self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark_path=True,
+        water_mark = Image.open(self.args.water_mark)
+        self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark,
                                            transform=transforms.Compose([
                                                 transforms.Resize(800),
                                                 transforms.CenterCrop(800),
                                                 transforms.ToTensor(),
                                                 transforms.Normalize([0.5], [0.5]),
                                            ]),)
-        self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark_path=True,
+        self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark,
                                           transform=transforms.Compose([
                                               transforms.Resize(800),
                                               transforms.CenterCrop(800),
@@ -126,14 +129,15 @@ class Trainer:
 
 def make_args():
     parser = ArgumentParser()
-    parser.add_argument("--train_root", default='E:/dataset/smoke_ds', type=str)
-    parser.add_argument("--test_root", default='E:/dataset/smoke_ds', type=str)
-    parser.add_argument("--bs", default=64, type=int)
-    parser.add_argument("--lr", default=1e-4, type=float)
+    parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
+    parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
+    parser.add_argument("--water_mark", default='./water_mark.png', type=str)
+    parser.add_argument("--bs", default=4, type=int)
+    parser.add_argument("--lr", default=1e-2, type=float)
     parser.add_argument("--epochs", default=20, type=int)
     parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument("--log_dir", default='logs/', type=str)
-    parser.add_argument("--log_step", default=50, type=int)
+    parser.add_argument("--log_step", default=20, type=int)
     args = parser.parse_args()
     return args
 
