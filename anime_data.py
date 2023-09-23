@@ -31,8 +31,10 @@ class WaterMarkDataset(data.Dataset):
         
         img_cv = np.array(img.convert('RGB'))/255.
         water_mark_cv = np.asarray(water_mark)/255.
+        alpha = (water_mark_cv[:,:,3:]*random.uniform(0.9, 1.1)).clip(0,1)
+        water_mark_cv[:, :, :3] = water_mark_cv[:,:,:3]**random.uniform(0.76, 1.3)
         l,t,r,b = (w-w_t)//2, (h-h_t)//2, (w-w_t)//2+w_t, (h-h_t)//2+h_t
-        img_cv[t:b, l:r, :] = water_mark_cv[:,:,3:]*water_mark_cv[:,:,:3] + (1.-water_mark_cv[:,:,3:])*img_cv[t:b, l:r, :]
+        img_cv[t:b, l:r, :] = alpha*water_mark_cv[:,:,:3] + (1.-alpha)*img_cv[t:b, l:r, :]
         img = Image.fromarray((img_cv*255.).astype(np.uint8))
         
         
@@ -43,7 +45,7 @@ class WaterMarkDataset(data.Dataset):
             img = self.transform(img)
             img_clean = self.transform(img_clean)
 
-        return img, img_clean
+        return img, img_clean, (l,t,r,b)
 
     def __len__(self):
         return len(self.data_list)

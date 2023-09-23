@@ -21,6 +21,7 @@ from utils import cal_psnr
 class Trainer:
     def __init__(self, args):
         self.args=args
+        self.alpha = args.alpha
 
         set_seed(42)
 
@@ -84,9 +85,10 @@ class Trainer:
         loss_sum = 0
         for ep in range(self.args.epochs):
             self.net.train()
-            for step, (img, img_clean) in enumerate(self.train_loader):
+            for step, (img, img_clean, bbox) in enumerate(self.train_loader):
                 img = img.to(self.accelerator.device)
                 img_clean = img_clean.to(self.accelerator.device)
+                #l,t,r,b = bbox
 
                 pred = self.net(img)
 
@@ -138,6 +140,8 @@ def make_args():
     parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument("--log_dir", default='logs/', type=str)
     parser.add_argument("--log_step", default=20, type=int)
+
+    parser.add_argument("--alpha", default=0.7, type=float)
     args = parser.parse_args()
     return args
 
