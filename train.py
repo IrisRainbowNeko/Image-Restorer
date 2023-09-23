@@ -46,7 +46,7 @@ class Trainer:
             self.accelerator.prepare(self.net, self.optimizer, self.train_loader, self.test_loader, self.scheduler)
 
     def build_model(self):
-        self.net = NAFNet()
+        self.net = NAFNet(enc_blk_nums=[1,1,2,4], middle_blk_num=6, dec_blk_nums=[2,2,1,1])
 
         #summary(self.net, (3, 224, 224))
 
