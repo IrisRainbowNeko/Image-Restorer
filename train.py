@@ -47,7 +47,7 @@ class Trainer:
             self.accelerator.prepare(self.net, self.optimizer, self.train_loader, self.test_loader, self.scheduler)
 
     def build_model(self):
-        self.net = NAFNet(enc_blk_nums=[1,1,2,4], middle_blk_num=6, dec_blk_nums=[2,2,1,1])
+        self.net = NAFNet(enc_blk_nums=[1,2,4,8], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
 
         #summary(self.net, (3, 224, 224))
 
@@ -57,7 +57,7 @@ class Trainer:
 
         self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
                                             steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
-                                            pct_start=0.05)
+                                            pct_start=0.2)
 
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
@@ -135,8 +135,8 @@ def make_args():
     parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
     parser.add_argument("--water_mark", default='./water_mark.png', type=str)
     parser.add_argument("--bs", default=4, type=int)
-    parser.add_argument("--lr", default=1e-2, type=float)
-    parser.add_argument("--epochs", default=20, type=int)
+    parser.add_argument("--lr", default=1e-3, type=float)
+    parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument("--log_dir", default='logs/', type=str)
     parser.add_argument("--log_step", default=20, type=int)
