@@ -47,12 +47,13 @@ class Trainer:
             self.accelerator.prepare(self.net, self.optimizer, self.train_loader, self.test_loader, self.scheduler)
 
     def build_model(self):
-        self.net = NAFNet(enc_blk_nums=[1,2,4,8], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
+        self.net = NAFNet(width=32, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
 
         #summary(self.net, (3, 224, 224))
 
         self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr)
         self.criterion = nn.SmoothL1Loss()
+        self.criterion_mask = nn.SmoothL1Loss(reduction='none')
         print(len(self.train_loader))
 
         self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
@@ -81,18 +82,21 @@ class Trainer:
         self.test_loader = torch.utils.data.DataLoader(self.data_test, batch_size=self.args.bs, shuffle=False,
                                                         num_workers=self.args.num_workers, pin_memory=True)
 
+    def local_loss(self, img_clean, pred, img_mask):
+        return (self.criterion_mask(img_clean, pred)*img_mask).mean()
+
     def train(self):
         loss_sum = 0
         for ep in range(self.args.epochs):
             self.net.train()
-            for step, (img, img_clean, bbox) in enumerate(self.train_loader):
+            for step, (img, img_clean, img_mask) in enumerate(self.train_loader):
                 img = img.to(self.accelerator.device)
                 img_clean = img_clean.to(self.accelerator.device)
                 #l,t,r,b = bbox
 
                 pred = self.net(img)
 
-                loss = self.criterion(pred, img_clean)
+                loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
 
                 self.accelerator.backward(loss)
                 self.optimizer.step()
@@ -116,7 +120,7 @@ class Trainer:
         mean = torch.tensor([0.5]).to(self.accelerator.device)
         std = torch.tensor([0.5]).to(self.accelerator.device)
         psnr=0
-        for step, (img, img_clean) in enumerate(self.test_loader):
+        for step, (img, img_clean, img_mask) in enumerate(self.test_loader):
             img = img.to(self.accelerator.device)
             img_clean = img_clean.to(self.accelerator.device)
 
@@ -141,7 +145,7 @@ def make_args():
     parser.add_argument("--log_dir", default='logs/', type=str)
     parser.add_argument("--log_step", default=20, type=int)
 
-    parser.add_argument("--alpha", default=0.7, type=float)
+    parser.add_argument("--alpha", default=0.3, type=float)
     args = parser.parse_args()
     return args
 
