@@ -71,6 +71,7 @@ class Trainer:
                                                 transforms.Normalize([0.5], [0.5]),
                                            ]),)
         self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
+                                          noise_std=0,
                                           transform=transforms.Compose([
                                               transforms.Resize(800),
                                               transforms.CenterCrop(800),

@@ -38,7 +38,8 @@ class WaterMarkDataset(data.Dataset):
         water_mark_cv[:, :, :3] = water_mark_cv[:,:,:3]**random.uniform(0.76, 1.3)
         l,t,r,b = (w-w_t)//2, (h-h_t)//2, (w-w_t)//2+w_t, (h-h_t)//2+h_t
         img_cv[t:b, l:r, :] = alpha*water_mark_cv[:,:,:3] + (1.-alpha)*img_cv[t:b, l:r, :]
-        img_cv[t:b, l:r, :] += np.random.randn(b-t, r-l, 3)*random.uniform(0, self.noise_std)
+        if self.noise_std>0:
+            img_cv[t:b, l:r, :] += np.random.randn(b-t, r-l, 3)*random.uniform(0, self.noise_std)
         img = Image.fromarray((img_cv*255.).astype(np.uint8))
 
         img_mask = np.zeros_like(img_cv)
