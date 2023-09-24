@@ -11,8 +11,9 @@ import numpy as np
 # ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class WaterMarkDataset(data.Dataset):
-    def __init__(self, root, water_mark, water_mark_mask, transform=None):
+    def __init__(self, root, water_mark, water_mark_mask, transform=None, noise_std=0.1):
         self.transform=transform
+        self.noise_std=noise_std
 
         root=Path(root)
         self.data_list=[str(x) for x in root.iterdir()]
@@ -37,6 +38,7 @@ class WaterMarkDataset(data.Dataset):
         water_mark_cv[:, :, :3] = water_mark_cv[:,:,:3]**random.uniform(0.76, 1.3)
         l,t,r,b = (w-w_t)//2, (h-h_t)//2, (w-w_t)//2+w_t, (h-h_t)//2+h_t
         img_cv[t:b, l:r, :] = alpha*water_mark_cv[:,:,:3] + (1.-alpha)*img_cv[t:b, l:r, :]
+        img_cv[t:b, l:r, :] += torch.randn_like(img_cv[t:b, l:r, :])*random.uniform(0, self.noise_std)
         img = Image.fromarray((img_cv*255.).astype(np.uint8))
 
         img_mask = np.zeros_like(img_cv)
