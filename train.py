@@ -62,14 +62,15 @@ class Trainer:
 
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
-        self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark,
+        water_mark_mask = Image.open(self.args.water_mark_mask)
+        self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
                                            transform=transforms.Compose([
                                                 transforms.Resize(800),
                                                 transforms.CenterCrop(800),
                                                 transforms.ToTensor(),
                                                 transforms.Normalize([0.5], [0.5]),
                                            ]),)
-        self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark,
+        self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
                                           transform=transforms.Compose([
                                               transforms.Resize(800),
                                               transforms.CenterCrop(800),
@@ -137,7 +138,8 @@ def make_args():
     parser = ArgumentParser()
     parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
     parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
-    parser.add_argument("--water_mark", default='./water_mark.png', type=str)
+    parser.add_argument("--water_mark", default='./water_mark2.png', type=str)
+    parser.add_argument("--water_mark_mask", default='./water_mark2_mask.png', type=str)
     parser.add_argument("--bs", default=4, type=int)
     parser.add_argument("--lr", default=1e-3, type=float)
     parser.add_argument("--epochs", default=100, type=int)
