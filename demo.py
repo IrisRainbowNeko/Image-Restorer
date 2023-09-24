@@ -10,7 +10,7 @@ device = 'cuda'
 
 class Infer:
     def __init__(self, ckpt):
-        self.net = NAFNet(enc_blk_nums=[1,2,4,8], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
+        self.net = NAFNet(width=32, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
         self.net.load_state_dict(torch.load(ckpt))
         self.net = self.net.to(device)
 

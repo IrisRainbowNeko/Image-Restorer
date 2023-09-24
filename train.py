@@ -62,7 +62,7 @@ class Trainer:
 
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
-        water_mark_mask = Image.open(self.args.water_mark_mask)
+        water_mark_mask = Image.open(self.args.water_mark_mask).convert('RGB')
         self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
                                            transform=transforms.Compose([
                                                 transforms.Resize(800),
@@ -93,7 +93,7 @@ class Trainer:
             for step, (img, img_clean, img_mask) in enumerate(self.train_loader):
                 img = img.to(self.accelerator.device)
                 img_clean = img_clean.to(self.accelerator.device)
-                #l,t,r,b = bbox
+                img_mask = img_mask.to(self.accelerator.device)
 
                 pred = self.net(img)
 
