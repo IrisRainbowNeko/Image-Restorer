@@ -87,6 +87,7 @@ class PairDataset(data.Dataset):
 class PairDatasetMark(data.Dataset):
     def __init__(self, root_clean, root_mark, water_mark, water_mark_mask, transform=None, noise_std=0.1):
         self.transform=transform
+        self.noise_std=noise_std
 
         root_clean=Path(root_clean)
         self.data_list_clean=[str(x) for x in root_clean.iterdir()]
