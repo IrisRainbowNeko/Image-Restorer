@@ -56,3 +56,25 @@ class WaterMarkDataset(data.Dataset):
 
     def __len__(self):
         return len(self.data_list)
+
+class PairDataset(data.Dataset):
+    def __init__(self, root_clean, root_mark, transform=None):
+        self.transform=transform
+
+        root_clean=Path(root_clean)
+        self.data_list_clean=[str(x) for x in root_clean.iterdir()]
+        root_mark = Path(root_mark)
+        self.data_list_mark=[str(x) for x in root_mark.iterdir()]
+
+    def __getitem__(self, idx):
+        img_mark = Image.open(self.data_list_mark[idx]).convert('RGB')
+        img_clean = Image.open(random.choice(self.data_list_clean)).convert('RGB')
+
+        if self.transform is not None:
+            img_mark = self.transform(img_mark)
+            img_clean = self.transform(img_clean)
+
+        return img_mark, img_clean
+
+    def __len__(self):
+        return len(self.data_list_mark)
