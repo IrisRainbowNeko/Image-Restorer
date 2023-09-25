@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torchvision import transforms
 from torchvision.models import resnet
-from anime_data import WaterMarkDataset
+from anime_data import PairDataset, WaterMarkDataset
 import torchvision.datasets as datasets
 from argparse import ArgumentParser
 from loguru import logger
@@ -66,7 +66,7 @@ class Trainer:
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
         water_mark_mask = Image.open(self.args.water_mark_mask).convert('RGB')
-        self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
+        self.data_train = PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
                                            transform=transforms.Compose([
                                                 transforms.Resize(800),
                                                 transforms.CenterCrop(800),
@@ -86,9 +86,6 @@ class Trainer:
                                                         num_workers=self.args.num_workers, pin_memory=True)
         self.test_loader = torch.utils.data.DataLoader(self.data_test, batch_size=self.args.bs, shuffle=False,
                                                         num_workers=self.args.num_workers, pin_memory=True)
-
-    def local_loss(self, img_clean, pred, img_mask):
-        return (self.criterion_mask(img_clean, pred)*img_mask).mean()
 
     def train(self):
         valid = torch.tensor(1.).to(self.accelerator.device)
@@ -144,7 +141,7 @@ class Trainer:
                     loss_sum_D = 0
             self.test()
             if self.accelerator.is_local_main_process:
-                torch.save(self.net_G.state_dict(), f'output/ep_{ep}.pth')
+                torch.save(self.net_G.state_dict(), f'output_GAN/ep_{ep}.pth')
 
     @torch.no_grad()
     def test(self):
@@ -167,7 +164,8 @@ class Trainer:
 
 def make_args():
     parser = ArgumentParser()
-    parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
+    parser.add_argument("--train_root_clean", default='../datas/anime_SR/train/HR', type=str)
+    parser.add_argument("--train_root_mark", default='../datas/anime_SR/train/HR', type=str)
     parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
     parser.add_argument("--water_mark", default='./water_mark2.png', type=str)
     parser.add_argument("--water_mark_mask", default='./water_mark2_mask.png', type=str)
@@ -184,7 +182,7 @@ def make_args():
 
 if __name__ == '__main__':
     args = make_args()
-    os.makedirs('./output', exist_ok=True)
+    os.makedirs('./output_GAN', exist_ok=True)
     os.makedirs(args.log_dir, exist_ok=True)
 
     trainer = Trainer(args)
