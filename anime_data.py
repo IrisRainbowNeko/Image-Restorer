@@ -85,7 +85,7 @@ class PairDataset(data.Dataset):
         return len(self.data_list_mark)
 
 class PairDatasetMark(data.Dataset):
-    def __init__(self, root_clean, root_mark, water_mark, water_mark_mask, transform=None):
+    def __init__(self, root_clean, root_mark, water_mark, water_mark_mask, transform=None, noise_std=0.1):
         self.transform=transform
 
         root_clean=Path(root_clean)
