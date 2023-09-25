@@ -5,12 +5,12 @@ import torch
 from torch import nn
 from torchvision import transforms
 from torchvision.models import resnet
-from anime_data import PairDataset, WaterMarkDataset
+from anime_data import PairDataset, WaterMarkDataset, PairDatasetMark
 import torchvision.datasets as datasets
 from argparse import ArgumentParser
 from loguru import logger
 import datetime
-from models import NAFNet, Discriminator2
+from models import NAFNet, Discriminator
 from PIL import Image
 
 from accelerate import Accelerator
@@ -48,7 +48,7 @@ class Trainer:
 
     def build_model(self):
         self.net_G = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
-        self.net_D = Discriminator2((3,800,800))
+        self.net_D = Discriminator((3,800,800))
 
         #summary(self.net_G, (3, 224, 224))
 
@@ -69,8 +69,9 @@ class Trainer:
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
         water_mark_mask = Image.open(self.args.water_mark_mask).convert('RGB')
-        self.data_train = PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
-                                           transform=transforms.Compose([
+        self.data_train = PairDatasetMark(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
+                                          water_mark=water_mark, water_mark_mask=water_mark_mask,
+                                          transform=transforms.Compose([
                                                 transforms.Resize(800),
                                                 transforms.CenterCrop(800),
                                                 transforms.ToTensor(),
@@ -96,9 +97,10 @@ class Trainer:
 
         loss_sum_G, loss_sum_D = 0, 0
         for ep in range(self.args.epochs):
-            for step, (img, img_clean) in enumerate(self.train_loader):
+            for step, (img, img_clean, fake_mark) in enumerate(self.train_loader):
                 img = img.to(self.accelerator.device)
                 img_clean = img_clean.to(self.accelerator.device)
+                fake_mark = fake_mark.to(self.accelerator.device)
 
                 #  Train Generators
                 self.net_G.train()
@@ -108,8 +110,9 @@ class Trainer:
                 self.optimizer.zero_grad()
 
                 fake_A = self.net_G(img)
-                pred_fake = self.net_D(fake_A)
-                loss = self.criterion_gan(pred_fake, valid)
+                fake_B = self.net_G(fake_mark)
+                pred_fake_A = self.net_D(fake_A)
+                loss = self.criterion_gan(pred_fake_A, valid) + self.alpha*self.criterion(img_clean, fake_B)
 
                 self.accelerator.backward(loss)
                 self.optimizer.step()
@@ -180,7 +183,7 @@ def make_args():
     parser.add_argument("--log_dir", default='logs/', type=str)
     parser.add_argument("--log_step", default=20, type=int)
 
-    parser.add_argument("--alpha", default=0.3, type=float)
+    parser.add_argument("--alpha", default=0.1, type=float)
     args = parser.parse_args()
     return args
 

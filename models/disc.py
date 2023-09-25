@@ -43,10 +43,10 @@ class Discriminator2(nn.Module):
             layers = []
             layers.append(nn.Conv2d(in_filters, out_filters, kernel_size=3, stride=1, padding=1))
             if not first_block:
-                layers.append(nn.BatchNorm2d(out_filters))
+                layers.append(nn.GroupNorm(32, out_filters))
             layers.append(nn.LeakyReLU(0.2, inplace=True))
             layers.append(nn.Conv2d(out_filters, out_filters, kernel_size=3, stride=2, padding=1))
-            layers.append(nn.BatchNorm2d(out_filters))
+            layers.append(nn.GroupNorm(32, out_filters))
             layers.append(nn.LeakyReLU(0.2, inplace=True))
             return layers
 
