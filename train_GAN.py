@@ -10,7 +10,7 @@ import torchvision.datasets as datasets
 from argparse import ArgumentParser
 from loguru import logger
 import datetime
-from models import NAFNet, Discriminator
+from models import NAFNet, Discriminator2
 from PIL import Image
 
 from accelerate import Accelerator
