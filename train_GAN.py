@@ -43,12 +43,12 @@ class Trainer:
         else:
             logger.disable("__main__")
 
-        self.net_G, self.net_D, self.optimizer, train_loader, val_loader, scheduler = \
-            self.accelerator.prepare(self.net_G, self.net_D, self.optimizer, self.train_loader, self.test_loader, self.scheduler)
+        self.net_G, self.net_D, self.optimizer, train_loader, val_loader = \
+            self.accelerator.prepare(self.net_G, self.net_D, self.optimizer, self.train_loader, self.test_loader)
 
     def build_model(self):
         self.net_G = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
-        self.net_D = Discriminator((3,800,800))
+        self.net_D = Discriminator2((3,800,800))
 
         #summary(self.net_G, (3, 224, 224))
 
@@ -59,9 +59,12 @@ class Trainer:
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
         print(len(self.train_loader))
 
-        self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
-                                            steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
-                                            pct_start=0.2)
+        # self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
+        #                                     steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
+        #                                     pct_start=0.2)
+        # self.scheduler_D = lr_scheduler.OneCycleLR(self.optimizer_D, max_lr=self.args.lr,
+        #                                     steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
+        #                                     pct_start=0.2)
 
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
@@ -110,7 +113,7 @@ class Trainer:
 
                 self.accelerator.backward(loss)
                 self.optimizer.step()
-                self.scheduler.step()
+                #self.scheduler.step()
 
                 loss_sum_G += loss.item()
 
@@ -122,13 +125,14 @@ class Trainer:
                 self.optimizer_D.zero_grad()
 
                 pred_real = self.net_D(img_clean)
+                pred_img_fake = self.net_D(img)
                 pred_fake = self.net_D(fake_A.detach())
 
-                loss = (self.criterion_gan(pred_real, valid) + self.criterion_gan(pred_fake, fake))/2
+                loss = (self.criterion_gan(pred_real, valid) + self.criterion_gan(pred_fake, fake) + self.criterion_gan(pred_img_fake, fake))/2
 
                 self.accelerator.backward(loss)
-                self.optimizer.step()
-                self.scheduler.step()
+                self.optimizer_D.step()
+                #self.scheduler_D.step()
 
                 loss_sum_D += loss.item()
 
@@ -136,7 +140,7 @@ class Trainer:
                     logger.info(f'[{ep+1}/{self.args.epochs}]<{step+1}/{len(self.train_loader)}>, '
                                 f'loss_G:{loss_sum_G / self.args.log_step:.3e}, '
                                 f'loss_D:{loss_sum_D / self.args.log_step:.3e}, '
-                                f'lr:{self.scheduler.get_lr()[0]:.3e}')
+                                f'lr:{self.optimizer.state_dict()["param_groups"][0]["lr"]:.3e}')
                     loss_sum_G = 0
                     loss_sum_D = 0
             self.test()
@@ -164,8 +168,8 @@ class Trainer:
 
 def make_args():
     parser = ArgumentParser()
-    parser.add_argument("--train_root_clean", default='../datas/anime_SR/train/HR', type=str)
-    parser.add_argument("--train_root_mark", default='../datas/anime_SR/train/HR', type=str)
+    parser.add_argument("--train_root_clean", default='../datas/clean_imgs', type=str)
+    parser.add_argument("--train_root_mark", default='../datas/imgs_water_mark', type=str)
     parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
     parser.add_argument("--water_mark", default='./water_mark2.png', type=str)
     parser.add_argument("--water_mark_mask", default='./water_mark2_mask.png', type=str)
