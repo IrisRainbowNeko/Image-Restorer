@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torchvision import transforms
 from torchvision.models import resnet
-from anime_data import WaterMarkDataset
+from anime_data import WaterMarkDataset, PairDataset
 import torchvision.datasets as datasets
 from argparse import ArgumentParser
 from loguru import logger
@@ -63,7 +63,23 @@ class Trainer:
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
         water_mark_mask = Image.open(self.args.water_mark_mask).convert('RGB')
-        self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
+        # self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
+        #                                    transform=transforms.Compose([
+        #                                         transforms.Resize(800),
+        #                                         transforms.CenterCrop(800),
+        #                                         transforms.ToTensor(),
+        #                                         transforms.Normalize([0.5], [0.5]),
+        #                                    ]),)
+        # self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
+        #                                   noise_std=0,
+        #                                   transform=transforms.Compose([
+        #                                       transforms.Resize(800),
+        #                                       transforms.CenterCrop(800),
+        #                                       transforms.ToTensor(),
+        #                                       transforms.Normalize([0.5], [0.5]),
+        #                                   ]),)
+
+        self.data_train = PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
                                            transform=transforms.Compose([
                                                 transforms.Resize(800),
                                                 transforms.CenterCrop(800),
@@ -78,6 +94,7 @@ class Trainer:
                                               transforms.ToTensor(),
                                               transforms.Normalize([0.5], [0.5]),
                                           ]),)
+
 
         self.train_loader = torch.utils.data.DataLoader(self.data_train, batch_size=self.args.bs, shuffle=True,
                                                         num_workers=self.args.num_workers, pin_memory=True)
@@ -137,7 +154,9 @@ class Trainer:
 
 def make_args():
     parser = ArgumentParser()
-    parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
+    # parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
+    parser.add_argument("--train_root_clean", default='../datas/anime_SR/train/HR', type=str)
+    parser.add_argument("--train_root_mark", default='../datas/anime_SR/train/HR', type=str)
     parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
     parser.add_argument("--water_mark", default='./water_mark2.png', type=str)
     parser.add_argument("--water_mark_mask", default='./water_mark2_mask.png', type=str)
