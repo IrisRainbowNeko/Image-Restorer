@@ -10,8 +10,9 @@ import torchvision.datasets as datasets
 from argparse import ArgumentParser
 from loguru import logger
 import datetime
-from models import NAFNet
+from models import get_NAFNet
 from PIL import Image
+from transformers.optimization import Adafactor
 
 from accelerate import Accelerator
 from accelerate.utils import set_seed
@@ -47,12 +48,12 @@ class Trainer:
             self.accelerator.prepare(self.net, self.optimizer, self.train_loader, self.test_loader, self.scheduler)
 
     def build_model(self):
-        if self.args.arch == 'mark-s':
-            self.net = NAFNet(width=24, enc_blk_nums=[1, 2, 4, 6], middle_blk_num=8, dec_blk_nums=[2, 2, 1, 1])
-        elif self.args.arch == 'mark-t':
-            self.net = NAFNet(width=16, enc_blk_nums=[1, 2, 4, 6], middle_blk_num=8, dec_blk_nums=[2, 2, 2, 1])
+        self.net = get_NAFNet(self.args.arch)
 
-        self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr)
+        if self.args.optim=='adamw':
+            self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr)
+        else:
+            self.optimizer = Adafactor(self.net.parameters(), lr=self.args.lr, relative_step=False, weight_decay=1e-3)
         self.criterion = nn.SmoothL1Loss()
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
         print(len(self.train_loader))
@@ -157,6 +158,7 @@ class Trainer:
 def make_args():
     parser = ArgumentParser()
     parser.add_argument("--arch", default='mark-s', type=str)
+    parser.add_argument("--optim", default='adamw', type=str)
 
     # parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
     parser.add_argument("--train_root_clean", default='../datas/skeb_watermark_removal/origin', type=str)

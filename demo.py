@@ -4,16 +4,13 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from models import NAFNet
+from models import get_NAFNet
 
 device = 'cpu'
 
 class Infer:
     def __init__(self, ckpt, arch):
-        if arch=='mark-s':
-            self.net = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
-        elif arch=='mark-t':
-            self.net = NAFNet(width=16, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,2,1])
+        self.net = get_NAFNet(arch)
 
         self.net.load_state_dict(torch.load(ckpt, map_location='cpu'))
         self.net = self.net.to(device)

@@ -170,3 +170,11 @@ class NAFNet(nn.Module):
         mod_pad_w = (self.padder_size - w % self.padder_size) % self.padder_size
         x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h))
         return x
+
+def get_NAFNet(arch):
+    if arch == 'mark-s':
+        return NAFNet(width=24, enc_blk_nums=[1, 2, 4, 6], middle_blk_num=8, dec_blk_nums=[2, 2, 1, 1])
+    elif arch == 'mark-t':
+        return NAFNet(width=16, enc_blk_nums=[1, 2, 4, 6], middle_blk_num=8, dec_blk_nums=[2, 2, 2, 1])
+    elif arch == 'mark-l':
+        return NAFNet(width=32, enc_blk_nums=[2, 2, 4, 8], middle_blk_num=12, dec_blk_nums=[2, 2, 2, 2])
