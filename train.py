@@ -47,7 +47,7 @@ class Trainer:
             self.accelerator.prepare(self.net, self.optimizer, self.train_loader, self.test_loader, self.scheduler)
 
     def build_model(self):
-        self.net = NAFNet(width=32, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
+        self.net = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
 
         #summary(self.net, (3, 224, 224))
 
@@ -108,14 +108,15 @@ class Trainer:
         loss_sum = 0
         for ep in range(self.args.epochs):
             self.net.train()
-            for step, (img, img_clean, img_mask) in enumerate(self.train_loader):
+            for step, (img, img_clean) in enumerate(self.train_loader):
                 img = img.to(self.accelerator.device)
                 img_clean = img_clean.to(self.accelerator.device)
-                img_mask = img_mask.to(self.accelerator.device)
+                #img_mask = img_mask.to(self.accelerator.device)
 
                 pred = self.net(img)
 
-                loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
+                #loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
+                loss = self.criterion(pred, img_clean)
 
                 self.accelerator.backward(loss)
                 self.optimizer.step()
@@ -155,13 +156,13 @@ class Trainer:
 def make_args():
     parser = ArgumentParser()
     # parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
-    parser.add_argument("--train_root_clean", default='../datas/anime_SR/train/HR', type=str)
-    parser.add_argument("--train_root_mark", default='../datas/anime_SR/train/HR', type=str)
+    parser.add_argument("--train_root_clean", default='../datas/skeb_watermark_removal/origin', type=str)
+    parser.add_argument("--train_root_mark", default='../datas/skeb_watermark_removal/marked', type=str)
     parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
-    parser.add_argument("--water_mark", default='./water_mark2.png', type=str)
-    parser.add_argument("--water_mark_mask", default='./water_mark2_mask.png', type=str)
+    parser.add_argument("--water_mark", default='./water_mark3.png', type=str)
+    parser.add_argument("--water_mark_mask", default='./water_mark3_mask.png', type=str)
     parser.add_argument("--bs", default=4, type=int)
-    parser.add_argument("--lr", default=1e-3, type=float)
+    parser.add_argument("--lr", default=8e-4, type=float)
     parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument("--log_dir", default='logs/', type=str)

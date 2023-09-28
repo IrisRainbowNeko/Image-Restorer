@@ -6,17 +6,17 @@ from torchvision import transforms
 
 from models import NAFNet
 
-device = 'cuda'
+device = 'cpu'
 
 class Infer:
     def __init__(self, ckpt):
         self.net = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
-        self.net.load_state_dict(torch.load(ckpt))
+        self.net.load_state_dict(torch.load(ckpt, map_location='cpu'))
         self.net = self.net.to(device)
 
         self.trans = transforms.Compose([
             transforms.Resize(800),
-            # transforms.CenterCrop(800),
+            transforms.CenterCrop(800),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
         ])
