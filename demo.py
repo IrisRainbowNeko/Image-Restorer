@@ -10,7 +10,8 @@ device = 'cpu'
 
 class Infer:
     def __init__(self, ckpt):
-        self.net = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
+        #self.net = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
+        self.net = NAFNet(width=16, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,2,1])
         self.net.load_state_dict(torch.load(ckpt, map_location='cpu'))
         self.net = self.net.to(device)
 
