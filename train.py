@@ -17,7 +17,7 @@ from transformers.optimization import Adafactor
 from accelerate import Accelerator
 from accelerate.utils import set_seed
 from torch.optim import lr_scheduler
-from utils import cal_psnr
+from utils import cal_psnr, get_cosine_schedule_with_warmup
 
 class Trainer:
     def __init__(self, args):
@@ -58,9 +58,11 @@ class Trainer:
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
         print(len(self.train_loader))
 
-        self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
-                                            steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
-                                            pct_start=0.2)
+        # self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
+        #                                     steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
+        #                                     pct_start=0.2)
+        num_training_steps = len(self.train_loader)*self.args.epochs
+        self.scheduler = get_cosine_schedule_with_warmup(self.optimizer, 0.2*num_training_steps, num_training_steps)
 
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
