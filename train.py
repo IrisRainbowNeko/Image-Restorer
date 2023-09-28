@@ -47,8 +47,10 @@ class Trainer:
             self.accelerator.prepare(self.net, self.optimizer, self.train_loader, self.test_loader, self.scheduler)
 
     def build_model(self):
-        #self.net = NAFNet(width=24, enc_blk_nums=[1,2,4,6], middle_blk_num=8, dec_blk_nums=[2,2,1,1])
-        self.net = NAFNet(width=16, enc_blk_nums=[1, 2, 4, 6], middle_blk_num=8, dec_blk_nums=[2, 2, 2, 1])
+        if self.args.arch == 'mark-s':
+            self.net = NAFNet(width=24, enc_blk_nums=[1, 2, 4, 6], middle_blk_num=8, dec_blk_nums=[2, 2, 1, 1])
+        elif self.args.arch == 'mark-t':
+            self.net = NAFNet(width=16, enc_blk_nums=[1, 2, 4, 6], middle_blk_num=8, dec_blk_nums=[2, 2, 2, 1])
 
         self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr)
         self.criterion = nn.SmoothL1Loss()
@@ -154,6 +156,8 @@ class Trainer:
 
 def make_args():
     parser = ArgumentParser()
+    parser.add_argument("--arch", default='mark-s', type=str)
+
     # parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
     parser.add_argument("--train_root_clean", default='../datas/skeb_watermark_removal/origin', type=str)
     parser.add_argument("--train_root_mark", default='../datas/skeb_watermark_removal/marked', type=str)
