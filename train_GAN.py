@@ -1,12 +1,9 @@
 import os
 
-import torchvision
 import torch
 from torch import nn
 from torchvision import transforms
-from torchvision.models import resnet
-from anime_data import PairDataset, WaterMarkDataset, PairDatasetMark
-import torchvision.datasets as datasets
+from data.anime_data import WaterMarkDataset, PairDatasetMark
 from argparse import ArgumentParser
 from loguru import logger
 import datetime
@@ -15,7 +12,6 @@ from PIL import Image
 
 from accelerate import Accelerator
 from accelerate.utils import set_seed
-from torch.optim import lr_scheduler
 from utils import cal_psnr
 
 class Trainer:
