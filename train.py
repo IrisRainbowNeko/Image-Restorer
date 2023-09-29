@@ -1,23 +1,24 @@
+import datetime
 import os
+from argparse import ArgumentParser
 
 import torch
-from torch import nn
-from torchvision import transforms
-from data import WaterMarkDataset, PairDataset, PadResize
-from argparse import ArgumentParser
-from loguru import logger
-import datetime
-from models import get_NAFNet
 from PIL import Image
-from transformers.optimization import Adafactor
-
 from accelerate import Accelerator
 from accelerate.utils import set_seed
-from utils import cal_psnr, get_cosine_schedule_with_warmup
+from loguru import logger
+from torch import nn
+from torch.optim import lr_scheduler
+from torchvision import transforms
+from transformers.optimization import Adafactor
+
+from data import WaterMarkDataset, PairDataset, PadResize
+from models import get_NAFNet
+from utils import cal_psnr
 
 class Trainer:
     def __init__(self, args):
-        self.args=args
+        self.args = args
         self.alpha = args.alpha
 
         set_seed(42)
@@ -34,7 +35,7 @@ class Trainer:
         self.world_size = self.accelerator.num_processes
 
         if self.accelerator.is_local_main_process:
-            logname = os.path.join(args.log_dir, datetime.datetime.now().isoformat() + '.log')
+            logname = os.path.join(args.log_dir, datetime.datetime.now().isoformat()+'.log')
             logger.add(logname)
             logger.info(f'world size: {self.world_size}')
         else:
@@ -46,7 +47,7 @@ class Trainer:
     def build_model(self):
         self.net = get_NAFNet(self.args.arch)
 
-        if self.args.optim=='adamw':
+        if self.args.optim == 'adamw':
             self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr)
         else:
             self.optimizer = Adafactor(self.net.parameters(), lr=self.args.lr, relative_step=False, weight_decay=1e-3)
@@ -54,11 +55,9 @@ class Trainer:
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
         print(len(self.train_loader))
 
-        # self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
-        #                                     steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
-        #                                     pct_start=0.2)
-        num_training_steps = len(self.train_loader)*self.args.epochs
-        self.scheduler = get_cosine_schedule_with_warmup(self.optimizer, 0.2*num_training_steps, num_training_steps)
+        self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
+                                                 steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
+                                                 pct_start=0.2)
 
     def build_data(self):
         water_mark = Image.open(self.args.water_mark)
@@ -80,12 +79,12 @@ class Trainer:
         #                                   ]),)
 
         self.data_train = PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
-                                           transform=transforms.Compose([
-                                                PadResize(800),
-                                                transforms.CenterCrop((400, 800)),
-                                                transforms.ToTensor(),
-                                                transforms.Normalize([0.5], [0.5]),
-                                           ]),)
+                                      transform=transforms.Compose([
+                                          PadResize(800),
+                                          transforms.CenterCrop((400, 800)),
+                                          transforms.ToTensor(),
+                                          transforms.Normalize([0.5], [0.5]),
+                                      ]), )
         self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
                                           noise_std=0,
                                           transform=transforms.Compose([
@@ -93,13 +92,12 @@ class Trainer:
                                               transforms.CenterCrop((400, 800)),
                                               transforms.ToTensor(),
                                               transforms.Normalize([0.5], [0.5]),
-                                          ]),)
-
+                                          ]), )
 
         self.train_loader = torch.utils.data.DataLoader(self.data_train, batch_size=self.args.bs, shuffle=True,
                                                         num_workers=self.args.num_workers, pin_memory=True)
         self.test_loader = torch.utils.data.DataLoader(self.data_test, batch_size=self.args.bs, shuffle=False,
-                                                        num_workers=self.args.num_workers, pin_memory=True)
+                                                       num_workers=self.args.num_workers, pin_memory=True)
 
     def local_loss(self, img_clean, pred, img_mask):
         return (self.criterion_mask(img_clean, pred)*img_mask).mean()
@@ -111,11 +109,11 @@ class Trainer:
             for step, (img, img_clean) in enumerate(self.train_loader):
                 img = img.to(self.accelerator.device)
                 img_clean = img_clean.to(self.accelerator.device)
-                #img_mask = img_mask.to(self.accelerator.device)
+                # img_mask = img_mask.to(self.accelerator.device)
 
                 pred = self.net(img)
 
-                #loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
+                # loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
                 loss = self.criterion(pred, img_clean)
 
                 self.accelerator.backward(loss)
@@ -125,9 +123,9 @@ class Trainer:
 
                 loss_sum += loss.item()
 
-                if step % self.args.log_step == 0:
+                if step%self.args.log_step == 0:
                     logger.info(f'[{ep+1}/{self.args.epochs}]<{step+1}/{len(self.train_loader)}>, '
-                                f'loss:{loss_sum / self.args.log_step:.3e}, '
+                                f'loss:{loss_sum/self.args.log_step:.3e}, '
                                 f'lr:{self.scheduler.get_lr()[0]:.3e}')
                     loss_sum = 0
             self.test()
@@ -139,14 +137,14 @@ class Trainer:
         self.net.eval()
         mean = torch.tensor([0.5]).to(self.accelerator.device)
         std = torch.tensor([0.5]).to(self.accelerator.device)
-        psnr=0
+        psnr = 0
         for step, (img, img_clean, img_mask) in enumerate(self.test_loader):
             img = img.to(self.accelerator.device)
             img_clean = img_clean.to(self.accelerator.device)
 
             pred = self.net(img)
 
-            psnr+=cal_psnr(pred, img_clean, mean, std).sum().item()
+            psnr += cal_psnr(pred, img_clean, mean, std).sum().item()
 
         psnr = torch.tensor(psnr).to(self.accelerator.device)
         psnr = self.accelerator.reduce(psnr, reduction="sum")
