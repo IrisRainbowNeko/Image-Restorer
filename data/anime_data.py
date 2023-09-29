@@ -81,7 +81,7 @@ class PairDataset(data.Dataset):
 
         mark_cv = np.array(img_mark)
         if self.noise_std>0:
-            mark_cv += np.random.randn(*mark_cv.shape)*random.uniform(0, self.noise_std*255)
+            mark_cv = mark_cv + np.random.randn(*mark_cv.shape)*random.uniform(0, self.noise_std*255)
         img_mark = Image.fromarray(mark_cv.clip(0,255).astype(np.uint8))
 
         if self.transform is not None:
