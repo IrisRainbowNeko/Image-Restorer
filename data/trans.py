@@ -9,7 +9,7 @@ class PadResize:
 
     def __call__(self, img:Image):
         w, h = img.size
-        hs = (h/w)*self.w
+        hs = int((h/w)*self.w)
         img = F.resize(img, [hs, self.w], self.interpolation, antialias=False)
         if hs<self.w:
             h_pad = (self.w-hs)//2
