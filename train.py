@@ -12,9 +12,10 @@ from torch.optim import lr_scheduler
 from torchvision import transforms
 from transformers.optimization import Adafactor
 
-from data import WaterMarkDataset, PairDataset, PadResize
+from data import WaterMarkDataset, PairDataset, PadResize, Mark_PairDataset
 from models import get_NAFNet
 from utils import cal_psnr
+from lbp_loss import LBPLoss
 
 class Trainer:
     def __init__(self, args):
@@ -53,6 +54,7 @@ class Trainer:
             self.optimizer = Adafactor(self.net.parameters(), lr=self.args.lr, relative_step=False, weight_decay=1e-3)
         self.criterion = nn.SmoothL1Loss()
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
+        self.loss_lbp = LBPLoss()
         print(len(self.train_loader))
 
         self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
@@ -78,13 +80,14 @@ class Trainer:
         #                                       transforms.Normalize([0.5], [0.5]),
         #                                   ]),)
 
-        self.data_train = PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
-                                      transform=transforms.Compose([
-                                          PadResize(800),
-                                          transforms.CenterCrop((400, 800)),
-                                          transforms.ToTensor(),
-                                          transforms.Normalize([0.5], [0.5]),
-                                      ]), )
+        self.data_train = Mark_PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
+                                           water_mark=water_mark, water_mark_mask=water_mark_mask,
+                                          transform=transforms.Compose([
+                                              PadResize(800),
+                                              transforms.CenterCrop((400, 800)),
+                                              transforms.ToTensor(),
+                                              transforms.Normalize([0.5], [0.5]),
+                                          ]), )
         self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
                                           noise_std=0,
                                           transform=transforms.Compose([
@@ -114,7 +117,7 @@ class Trainer:
                 pred = self.net(img)
 
                 # loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
-                loss = self.criterion(pred, img_clean)
+                loss = self.criterion(pred, img_clean) + 0.5*self.loss_lbp(pred*50, img_clean*50)
 
                 self.accelerator.backward(loss)
                 self.optimizer.step()

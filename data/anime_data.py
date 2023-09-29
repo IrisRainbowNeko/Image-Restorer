@@ -22,19 +22,28 @@ class WaterMarkDataset(data.Dataset):
         self.water_mark_mask = water_mark_mask.copy()
         self.w_mark, self.h_mark = self.water_mark.size
 
-    def make_water_mark(self, img):
+    def make_water_mark(self, img, size_r=(0.9, 1.0), alpha_r=(0.95, 1.05), offset_r=(10, 10)):
         w, h = img.size
-        w_t = int(random.uniform(0.8, 1.0)*w)
+        w_t = int(random.uniform(*size_r)*w)
         h_t = int(self.h_mark*(w_t/self.w_mark))
         water_mark = self.water_mark.resize((w_t, h_t))
         wm_mask = self.water_mark_mask.resize((w_t, h_t))
 
         img_cv = np.array(img.convert('RGB'))/255.
         water_mark_cv = np.asarray(water_mark)/255.
-        alpha = (water_mark_cv[:, :, 3:]*random.uniform(0.9, 1.1)).clip(0, 1)
+        alpha = (water_mark_cv[:, :, 3:]*random.uniform(*alpha_r)).clip(0, 1)
         water_mark_cv[:, :, :3] = water_mark_cv[:, :, :3]**random.uniform(0.76, 1.3)
         l, t, r, b = (w-w_t)//2, (h-h_t)//2, (w-w_t)//2+w_t, (h-h_t)//2+h_t
-        img_cv[t:b, l:r, :] = alpha*water_mark_cv[:, :, :3]+(1.-alpha)*img_cv[t:b, l:r, :]
+
+        off_x = random.randint(-offset_r[0], offset_r[0]+1)
+        off_y = random.randint(-offset_r[1], offset_r[1]+1)
+        l += off_x
+        r += off_x
+        t += off_y
+        b += off_y
+
+        pl, pt, pr, pb = max(0, 0-l), max(0, 0-t), min(w, r-w), min(h, b-h)
+        img_cv[t:b, l:r, :] = alpha*water_mark_cv[pt:pb, pl:pr, :3]+(1.-alpha)*img_cv[t:b, l:r, :]
         if self.noise_std>0:
             img_cv[t:b, l:r, :] += np.random.randn(b-t, r-l, 3)*random.uniform(0, self.noise_std)
         img = Image.fromarray((img_cv*255.).astype(np.uint8))
@@ -92,6 +101,39 @@ class PairDataset(data.Dataset):
 
     def __len__(self):
         return len(self.data_list_mark)
+
+class Mark_PairDataset(WaterMarkDataset):
+    def __init__(self, root_clean, root_mark, water_mark, water_mark_mask, transform=None, noise_std=0.08):
+        super().__init__(root_clean, water_mark, water_mark_mask, transform, noise_std)
+
+        self.data_list_clean=self.data_list
+        root_mark = Path(root_mark)
+        self.data_list_mark=[str(x) for x in root_mark.iterdir()]
+
+        assert len(self.data_list_clean)==len(self.data_list_mark)
+
+        self.data_len = len(self.data_list_mark)
+
+    def __getitem__(self, idx):
+        img_mark = Image.open(self.data_list_mark[idx%self.data_len]).convert('RGB')
+        img_clean = Image.open(self.data_list_clean[idx%self.data_len]).convert('RGB')
+
+        if idx < self.data_len:
+            mark_cv = np.array(img_mark)
+            if self.noise_std>0:
+                mark_cv = mark_cv + np.random.randn(*mark_cv.shape)*random.uniform(0, self.noise_std*255)
+            img_mark = Image.fromarray(mark_cv.clip(0,255).astype(np.uint8))
+        else:
+            img_mark, mark_mask = self.make_water_mark(img_mark)
+
+        if self.transform is not None:
+            img_mark = self.transform(img_mark)
+            img_clean = self.transform(img_clean)
+
+        return img_mark, img_clean
+
+    def __len__(self):
+        return self.data_len*2
 
 class RandomPairDataset(data.Dataset):
     def __init__(self, root_clean, root_mark, transform=None):
