@@ -11,6 +11,10 @@ def cal_psnr(x, y, mean, std):
     psnr = 10*torch.log10(1.0/mse)
     return psnr
 
+def get_ext(path:str):
+    idx = path.rfind('.')
+    return path[idx+1:]
+
 def get_cosine_schedule_with_warmup(
     optimizer, num_warmup_steps: int, num_training_steps: int, num_cycles: float = 0.5, last_epoch: int = -1
 ):
