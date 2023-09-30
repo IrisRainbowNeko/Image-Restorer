@@ -48,7 +48,7 @@ class Infer:
         w,h=img_raw.size
         img_raw.paste(pred, (0, (h-hm)//2))
 
-        return pred
+        return img_raw
 
 if __name__ == '__main__':
     parser = ArgumentParser()
