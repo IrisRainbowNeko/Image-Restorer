@@ -56,7 +56,7 @@ class Infer:
 
     def infer(self, path, out_dir):
         if os.path.isdir(path):
-            files = [os.path.join(path, x) for x in os.listdir(path) if get_ext(x) in types_support]
+            files = [os.path.join(path, x) for x in os.listdir(path) if get_ext(x).lower() in types_support]
             for file in tqdm(files):
                 img = self.infer_one(file)
                 img.save(os.path.join(out_dir, os.path.basename(file)))
