@@ -6,6 +6,7 @@ from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
 
+from data import PadResize
 from models import get_NAFNet
 from utils import get_ext
 
@@ -22,7 +23,7 @@ class Infer:
         self.resize = transforms.Resize(800)
 
         self.trans = transforms.Compose([
-            transforms.Resize(800),
+            PadResize(800),
             transforms.CenterCrop((400, 800)),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
