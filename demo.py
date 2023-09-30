@@ -15,9 +15,11 @@ class Infer:
         self.net.load_state_dict(torch.load(ckpt, map_location='cpu'))
         self.net = self.net.to(device)
 
+        self.resize = transforms.Resize(800)
+
         self.trans = transforms.Compose([
             transforms.Resize(800),
-            #transforms.CenterCrop((800, 800)),
+            transforms.CenterCrop((400, 800)),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
         ])
@@ -28,19 +30,24 @@ class Infer:
         self.std = std.view(1, -1, 1, 1)
 
     def load_image(self, path):
-        img = Image.open(path).convert('RGB')
-        img = self.trans(img)
-        return img
+        img_raw = Image.open(path).convert('RGB')
+        img = self.trans(img_raw)
+        return img, img_raw
 
     @torch.no_grad()
     def infer_one(self, path):
-        img = self.load_image(path).to(device)
-        img = img.unsqueeze(0)
+        img, img_raw = self.load_image(path)
+        img = img.to(device).unsqueeze(0)
         pred = self.net(img)
         pred = pred*self.std+self.mean
         pred = pred.squeeze(0).clip(0,1)
 
         pred = transforms.ToPILImage()(pred)
+        img_raw = self.resize(img_raw)
+        wm,hm=pred.size
+        w,h=img_raw.size
+        img_raw.paste(pred, (0, (h-hm)//2))
+
         return pred
 
 if __name__ == '__main__':
