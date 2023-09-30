@@ -42,14 +42,16 @@ class WaterMarkDataset(data.Dataset):
         t += off_y
         b += off_y
 
-        pl, pt, pr, pb = max(0, 0-l), max(0, 0-t), min(w, r-w), min(h, b-h)
+        pl, pt, pr, pb = max(0, 0-l), max(0, 0-t), w_t-max(0, r-w), h_t-max(0, b-h)
+        l, t, r, b = max(0, l), max(0, t), min(r, w), min(b, h)
+        alpha = alpha[pt:pb, pl:pr, :]
         img_cv[t:b, l:r, :] = alpha*water_mark_cv[pt:pb, pl:pr, :3]+(1.-alpha)*img_cv[t:b, l:r, :]
         if self.noise_std>0:
             img_cv[t:b, l:r, :] += np.random.randn(b-t, r-l, 3)*random.uniform(0, self.noise_std)
         img = Image.fromarray((img_cv*255.).astype(np.uint8))
 
         img_mask = np.zeros_like(img_cv)
-        img_mask[t:b, l:r, :] = wm_mask
+        #img_mask[t:b, l:r, :] = wm_mask
         img_mask = Image.fromarray((img_mask*255.).astype(np.uint8))
 
         return img, img_mask

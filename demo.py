@@ -17,7 +17,7 @@ class Infer:
 
         self.trans = transforms.Compose([
             transforms.Resize(800),
-            transforms.CenterCrop(800),
+            #transforms.CenterCrop((800, 800)),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
         ])
