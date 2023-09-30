@@ -56,7 +56,7 @@ class Infer:
 
     def infer(self, path, out_dir):
         if os.path.isdir(path):
-            files = [os.path.join(path, x) for x in os.listdir(path) if get_ext(path) in types_support]
+            files = [os.path.join(path, x) for x in os.listdir(path) if get_ext(x) in types_support]
             for file in tqdm(files):
                 img = self.infer_one(file)
                 img.save(os.path.join(out_dir, os.path.basename(file)))
@@ -71,6 +71,8 @@ if __name__ == '__main__':
     parser.add_argument("--img", default='', type=str)
     parser.add_argument("--out_dir", default='results', type=str)
     args = parser.parse_args()
+
+    os.makedirs(args.out_dir, exist_ok=True)
 
     infer = Infer(args.ckpt, args.arch)
     infer.infer(args.img, args.out_dir)
