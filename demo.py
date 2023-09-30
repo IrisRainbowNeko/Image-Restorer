@@ -3,10 +3,13 @@ from argparse import ArgumentParser
 import torch
 from PIL import Image
 from torchvision import transforms
+import os
+from tqdm import tqdm
 
 from models import get_NAFNet
 
 device = 'cpu'
+types_support = ['bmp', 'gif', 'ico', 'jpeg', 'jpg', 'png', 'tiff', 'webp']
 
 class Infer:
     def __init__(self, ckpt, arch):
@@ -50,13 +53,24 @@ class Infer:
 
         return img_raw
 
+    def infer(self, path, out_dir):
+        if os.path.isdir(path):
+            files = [os.path.join(path, x) for x in os.listdir(path)]
+            for file in tqdm(files):
+                img = self.infer_one(file)
+                img.save(os.path.join(out_dir, os.path.basename(file)))
+        else:
+            img = self.infer_one(path)
+            img.save(os.path.join(out_dir, os.path.basename(path)))
+
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--arch", default='mark-s', type=str)
     parser.add_argument("--ckpt", default='', type=str)
     parser.add_argument("--img", default='', type=str)
+    parser.add_argument("--out_dir", default='results', type=str)
     args = parser.parse_args()
 
     infer = Infer(args.ckpt, args.arch)
-    pred = infer.infer_one(args.img)
-    pred.save('test.png')
+    infer.infer(args.img, args.out_dir)
