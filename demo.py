@@ -20,10 +20,10 @@ class Infer:
         self.net.load_state_dict(torch.load(ckpt, map_location='cpu'))
         self.net = self.net.to(device)
 
-        self.resize = PadResize(800)
+        self.resize = PadResize(800, make_pad=False)
 
         self.trans = transforms.Compose([
-            PadResize(800),
+            PadResize(800, make_pad=False),
             transforms.CenterCrop((400, 800)),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),

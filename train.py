@@ -131,12 +131,12 @@ class Trainer:
                                 f'loss:{loss_sum/self.args.log_step:.3e}, '
                                 f'lr:{self.scheduler.get_lr()[0]:.3e}')
                     loss_sum = 0
-            self.test()
+            self.evaluate()
             if self.accelerator.is_local_main_process:
                 torch.save(self.net.state_dict(), f'output/ep_{ep}.pth')
 
     @torch.no_grad()
-    def test(self):
+    def evaluate(self):
         self.net.eval()
         mean = torch.tensor([0.5]).to(self.accelerator.device)
         std = torch.tensor([0.5]).to(self.accelerator.device)
