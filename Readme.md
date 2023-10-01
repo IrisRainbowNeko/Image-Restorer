@@ -1,8 +1,6 @@
-# 去SAMPLE水印
+# 去半透明水印
 
 ## 使用
-
-[下载模型](https://huggingface.co/7eu7d7/sample_watermark_eraser/tree/main)
 
 去水印
 ```bash
