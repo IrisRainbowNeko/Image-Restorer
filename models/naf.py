@@ -8,6 +8,11 @@ class SimpleGate(nn.Module):
         x1, x2 = x.chunk(2, dim=1)
         return x1*x2
 
+class GEGLU(nn.Module):
+    def forward(self, x):
+        x1, x2 = x.chunk(2, dim=1)
+        return x1*F.gelu(x2)
+
 class NAFBlock(nn.Module):
     def __init__(self, c, DW_Expand=2, FFN_Expand=2, drop_out_rate=0.):
         super().__init__()
@@ -25,7 +30,7 @@ class NAFBlock(nn.Module):
         )
 
         # SimpleGate
-        self.sg = SimpleGate()
+        self.sg = GEGLU()
 
         ffn_channel = FFN_Expand*c
         self.conv4 = nn.Conv2d(in_channels=c, out_channels=ffn_channel, kernel_size=1, padding=0, stride=1, groups=1, bias=True)

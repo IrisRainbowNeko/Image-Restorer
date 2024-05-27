@@ -49,12 +49,12 @@ class Trainer:
         self.net = get_NAFNet(self.args.arch)
 
         if self.args.optim == 'adamw':
-            self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr)
+            self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr, betas=(0.9, 0.9), weight_decay=1e-3)
         else:
             self.optimizer = Adafactor(self.net.parameters(), lr=self.args.lr, relative_step=False, weight_decay=1e-3)
         self.criterion = nn.SmoothL1Loss()
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
-        self.loss_lbp = LBPLoss()
+        #self.loss_lbp = LBPLoss()
         print(len(self.train_loader))
 
         self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
@@ -117,9 +117,13 @@ class Trainer:
                 pred = self.net(img)
 
                 # loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
-                loss = self.criterion(pred, img_clean) + 0.5*self.loss_lbp(pred*50, img_clean*50)
+                loss = self.criterion(pred, img_clean) #+ 0.5*self.loss_lbp(pred*50, img_clean*50)
 
                 self.accelerator.backward(loss)
+
+                if self.cfgs.train.max_grad_norm and self.accelerator.sync_gradients:  # fine-tuning
+                    self.accelerator.clip_grad_norm_(self.net.parameters(), 1.)
+
                 self.optimizer.step()
                 self.optimizer.zero_grad()
                 self.scheduler.step()
