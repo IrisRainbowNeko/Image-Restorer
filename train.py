@@ -48,10 +48,17 @@ class Trainer:
     def build_model(self):
         self.net = get_NAFNet(self.args.arch)
 
+        no_decay_layer = lambda name: 'norm' in name or name.endswith('bias') or name.endswith('beta') or name.endswith('gamma')
+        groups = [
+            {"params": [name for name, p in self.net.named_parameters() if no_decay_layer(name)],
+             "weight_decay": 0},
+            {"params": [name for name, p in self.net.named_parameters() if not no_decay_layer(name)],
+             "weight_decay": 1e-3},
+        ]
         if self.args.optim == 'adamw':
-            self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.args.lr, betas=(0.9, 0.9), weight_decay=1e-3)
+            self.optimizer = torch.optim.AdamW(groups, lr=self.args.lr, betas=(0.9, 0.9))
         else:
-            self.optimizer = Adafactor(self.net.parameters(), lr=self.args.lr, relative_step=False, weight_decay=1e-3)
+            self.optimizer = Adafactor(groups, lr=self.args.lr, relative_step=False)
         self.criterion = nn.SmoothL1Loss()
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
         #self.loss_lbp = LBPLoss()
@@ -80,22 +87,22 @@ class Trainer:
         #                                       transforms.Normalize([0.5], [0.5]),
         #                                   ]),)
 
-        self.data_train = Mark_PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
-                                           water_mark=water_mark, water_mark_mask=water_mark_mask,
-                                          transform=transforms.Compose([
-                                              PadResize(800),
-                                              transforms.CenterCrop((400, 800)),
-                                              transforms.ToTensor(),
-                                              transforms.Normalize([0.5], [0.5]),
-                                          ]), )
-        self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
-                                          noise_std=0,
-                                          transform=transforms.Compose([
-                                              PadResize(800),
-                                              transforms.CenterCrop((400, 800)),
-                                              transforms.ToTensor(),
-                                              transforms.Normalize([0.5], [0.5]),
-                                          ]), )
+        self.data_train = PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
+                                      noise_std=0,
+                                      transform=transforms.Compose([
+                                          PadResize(800),
+                                          transforms.CenterCrop((400, 800)),
+                                          transforms.ToTensor(),
+                                          transforms.Normalize([0.5], [0.5]),
+                                      ]), )
+        self.data_test = PairDataset(root_clean=self.args.test_root_clean, root_mark=self.args.test_root_clean,
+                                     noise_std=0,
+                                     transform=transforms.Compose([
+                                         PadResize(800),
+                                         transforms.CenterCrop((400, 800)),
+                                         transforms.ToTensor(),
+                                         transforms.Normalize([0.5], [0.5]),
+                                     ]), )
 
         self.train_loader = torch.utils.data.DataLoader(self.data_train, batch_size=self.args.bs, shuffle=True,
                                                         num_workers=self.args.num_workers, pin_memory=True)
