@@ -1,7 +1,18 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .layers import LayerNorm2d
+
+def checkpoint(function):
+    def wrapper(*args, **kwargs):
+        kwargs.setdefault("use_reentrant", True)
+        return torch.utils.checkpoint.checkpoint(function, *args, **kwargs)
+
+    if os.environ.get("GRAD_CKPT", "1") == "1":
+        return wrapper
+    else:
+        return function
 
 class SimpleGate(nn.Module):
     def forward(self, x):
@@ -45,6 +56,7 @@ class NAFBlock(nn.Module):
         self.beta = nn.Parameter(torch.zeros((1, c, 1, 1)), requires_grad=True)
         self.gamma = nn.Parameter(torch.zeros((1, c, 1, 1)), requires_grad=True)
 
+    @checkpoint
     def forward(self, inp):
         x = inp
 
