@@ -69,8 +69,8 @@ class Trainer:
                                                  pct_start=0.2)
 
     def build_data(self):
-        water_mark = Image.open(self.args.water_mark)
-        water_mark_mask = Image.open(self.args.water_mark_mask).convert('RGB')
+        #water_mark = Image.open(self.args.water_mark)
+        #water_mark_mask = Image.open(self.args.water_mark_mask).convert('RGB')
         # self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
         #                                    transform=transforms.Compose([
         #                                         transforms.Resize(800),
@@ -87,7 +87,7 @@ class Trainer:
         #                                       transforms.Normalize([0.5], [0.5]),
         #                                   ]),)
 
-        self.data_train = PairDataset(root_clean=self.args.train_root_clean, root_mark=self.args.train_root_mark,
+        self.data_train = PairDataset(data_file=self.args.train_data,
                                       noise_std=0,
                                       transform=transforms.Compose([
                                           PadResize(800),
@@ -95,7 +95,7 @@ class Trainer:
                                           transforms.ToTensor(),
                                           transforms.Normalize([0.5], [0.5]),
                                       ]), )
-        self.data_test = PairDataset(root_clean=self.args.test_root_clean, root_mark=self.args.test_root_clean,
+        self.data_test = PairDataset(data_file=self.args.test_data,
                                      noise_std=0,
                                      transform=transforms.Compose([
                                          PadResize(800),
@@ -171,11 +171,10 @@ def make_args():
     parser.add_argument("--optim", default='adamw', type=str)
 
     # parser.add_argument("--train_root", default='../datas/anime_SR/train/HR', type=str)
-    parser.add_argument("--train_root_clean", default='../datas/skeb_watermark_removal/origin', type=str)
-    parser.add_argument("--train_root_mark", default='../datas/skeb_watermark_removal/marked', type=str)
-    parser.add_argument("--test_root", default='../datas/anime_SR/test/HR', type=str)
-    parser.add_argument("--water_mark", default='./water_mark4.png', type=str)
-    parser.add_argument("--water_mark_mask", default='./water_mark4_mask.png', type=str)
+    parser.add_argument("--train_data", default='/data1/dzy/dataset_raw/skeb/train.json', type=str)
+    parser.add_argument("--test_data", default='/data1/dzy/dataset_raw/skeb/test.json', type=str)
+    # parser.add_argument("--water_mark", default='./water_mark4.png', type=str)
+    # parser.add_argument("--water_mark_mask", default='./water_mark4_mask.png', type=str)
     parser.add_argument("--bs", default=4, type=int)
     parser.add_argument("--lr", default=8e-4, type=float)
     parser.add_argument("--epochs", default=100, type=int)
