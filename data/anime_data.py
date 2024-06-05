@@ -78,9 +78,9 @@ class PairDataset(data.Dataset):
         self.transform=transform
 
         root_clean=Path(root_clean)
-        self.data_list_clean=[str(x) for x in root_clean.iterdir()]
+        self.data_list_clean=sorted([str(x) for x in root_clean.iterdir()])
         root_mark = Path(root_mark)
-        self.data_list_mark=[str(x) for x in root_mark.iterdir()]
+        self.data_list_mark=sorted([str(x) for x in root_mark.iterdir()])
 
         assert len(self.data_list_clean)==len(self.data_list_mark)
 
