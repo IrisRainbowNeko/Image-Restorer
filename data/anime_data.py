@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from PIL import Image
 import numpy as np
+import json
 
 # from PIL import ImageFile
 # ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -74,21 +75,17 @@ class WaterMarkDataset(data.Dataset):
         return len(self.data_list)
 
 class PairDataset(data.Dataset):
-    def __init__(self, root_clean, root_mark, transform=None, noise_std=0.08):
+    def __init__(self, data_file, transform=None, noise_std=0.08):
         self.transform=transform
 
-        root_clean=Path(root_clean)
-        self.data_list_clean=sorted([str(x) for x in root_clean.iterdir()])
-        root_mark = Path(root_mark)
-        self.data_list_mark=sorted([str(x) for x in root_mark.iterdir()])
-
-        assert len(self.data_list_clean)==len(self.data_list_mark)
+        with open(data_file, 'r') as file:
+            self.data_list = json.load(file)
 
         self.noise_std = noise_std
 
     def __getitem__(self, idx):
-        img_mark = Image.open(self.data_list_mark[idx]).convert('RGB')
-        img_clean = Image.open(self.data_list_clean[idx]).convert('RGB')
+        img_clean = Image.open(self.data_list[idx][0]).convert('RGB')
+        img_mark = Image.open(self.data_list[idx][1]).convert('RGB')
 
         mark_cv = np.array(img_mark)
         if self.noise_std>0:
@@ -102,7 +99,7 @@ class PairDataset(data.Dataset):
         return img_mark, img_clean
 
     def __len__(self):
-        return len(self.data_list_mark)
+        return len(self.data_list)
 
 class Mark_PairDataset(WaterMarkDataset):
     def __init__(self, root_clean, root_mark, water_mark, water_mark_mask, transform=None, noise_std=0.08):
