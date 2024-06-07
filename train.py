@@ -158,6 +158,7 @@ class Trainer:
 
         psnr = torch.tensor(psnr).to(self.accelerator.device)
         psnr = self.accelerator.reduce(psnr, reduction="sum")
+        psnr /= self.accelerator.num_processes
 
         logger.info(f'psnr: {psnr/len(self.data_test):.3f}')
 
