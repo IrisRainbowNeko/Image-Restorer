@@ -1,5 +1,6 @@
 import datetime
 import os
+import random
 from argparse import ArgumentParser
 
 import torch
@@ -68,25 +69,20 @@ class Trainer:
                                                  steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
                                                  pct_start=0.01)
 
-    def build_data(self):
-        #water_mark = Image.open(self.args.water_mark)
-        #water_mark_mask = Image.open(self.args.water_mark_mask).convert('RGB')
-        # self.data_train = WaterMarkDataset(root=self.args.train_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
-        #                                    transform=transforms.Compose([
-        #                                         transforms.Resize(800),
-        #                                         transforms.CenterCrop(800),
-        #                                         transforms.ToTensor(),
-        #                                         transforms.Normalize([0.5], [0.5]),
-        #                                    ]),)
-        # self.data_test = WaterMarkDataset(root=self.args.test_root, water_mark=water_mark, water_mark_mask=water_mark_mask,
-        #                                   noise_std=0,
-        #                                   transform=transforms.Compose([
-        #                                       transforms.Resize(800),
-        #                                       transforms.CenterCrop(800),
-        #                                       transforms.ToTensor(),
-        #                                       transforms.Normalize([0.5], [0.5]),
-        #                                   ]),)
+    def collate_fn(self, batch):
+        size = (random.randint(500, 1000), random.randint(500, 1000))
+        crop = transforms.RandomCrop(size)
 
+        imgs, targets = [], []
+        for item in batch:
+            img_pair = torch.cat(item, dim=0)
+            img, target = crop(img_pair).chunk(2)
+            imgs.append(img)
+            targets.append(target)
+
+        return torch.stack(imgs, dim=0), torch.stack(targets, dim=0)
+
+    def build_data(self):
         self.data_train = PairDataset(data_file=self.args.train_data,
                                       noise_std=0,
                                       transform=transforms.Compose([
@@ -98,14 +94,14 @@ class Trainer:
         self.data_test = PairDataset(data_file=self.args.test_data,
                                      noise_std=0,
                                      transform=transforms.Compose([
-                                         ShortResize(1000),
-                                         #transforms.CenterCrop((400, 800)),
+                                         PadResize(800),
+                                         transforms.CenterCrop((400, 800)),
                                          transforms.ToTensor(),
                                          transforms.Normalize([0.5], [0.5]),
                                      ]), )
 
         self.train_loader = torch.utils.data.DataLoader(self.data_train, batch_size=self.args.bs, shuffle=True,
-                                                        num_workers=self.args.num_workers, pin_memory=True)
+                                                        num_workers=self.args.num_workers, pin_memory=True, collate_fn=self.collate_fn)
         self.test_loader = torch.utils.data.DataLoader(self.data_test, batch_size=self.args.bs, shuffle=False,
                                                        num_workers=self.args.num_workers, pin_memory=True)
 
