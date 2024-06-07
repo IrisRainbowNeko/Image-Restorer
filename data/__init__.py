@@ -1,2 +1,2 @@
 from .anime_data import *
-from .trans import PadResize
+from .trans import PadResize, ShortResize

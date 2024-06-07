@@ -12,7 +12,7 @@ from torch.optim import lr_scheduler
 from torchvision import transforms
 from transformers.optimization import Adafactor
 
-from data import WaterMarkDataset, PairDataset, PadResize, Mark_PairDataset
+from data import WaterMarkDataset, PairDataset, PadResize, ShortResize
 from models import get_NAFNet
 from utils import cal_psnr
 from lbp_loss import LBPLoss
@@ -50,9 +50,9 @@ class Trainer:
 
         no_decay_layer = lambda name: 'norm' in name or name.endswith('bias') or name.endswith('beta') or name.endswith('gamma')
         groups = [
-            {"params": [name for name, p in self.net.named_parameters() if no_decay_layer(name)],
+            {"params": [p for name, p in self.net.named_parameters() if no_decay_layer(name)],
              "weight_decay": 0},
-            {"params": [name for name, p in self.net.named_parameters() if not no_decay_layer(name)],
+            {"params": [p for name, p in self.net.named_parameters() if not no_decay_layer(name)],
              "weight_decay": 1e-3},
         ]
         if self.args.optim == 'adamw':
@@ -66,7 +66,7 @@ class Trainer:
 
         self.scheduler = lr_scheduler.OneCycleLR(self.optimizer, max_lr=self.args.lr,
                                                  steps_per_epoch=len(self.train_loader), epochs=self.args.epochs,
-                                                 pct_start=0.2)
+                                                 pct_start=0.01)
 
     def build_data(self):
         #water_mark = Image.open(self.args.water_mark)
@@ -90,16 +90,16 @@ class Trainer:
         self.data_train = PairDataset(data_file=self.args.train_data,
                                       noise_std=0,
                                       transform=transforms.Compose([
-                                          PadResize(800),
-                                          transforms.CenterCrop((400, 800)),
+                                          ShortResize(1000),
+                                          #transforms.CenterCrop((400, 800)),
                                           transforms.ToTensor(),
                                           transforms.Normalize([0.5], [0.5]),
                                       ]), )
         self.data_test = PairDataset(data_file=self.args.test_data,
                                      noise_std=0,
                                      transform=transforms.Compose([
-                                         PadResize(800),
-                                         transforms.CenterCrop((400, 800)),
+                                         ShortResize(1000),
+                                         #transforms.CenterCrop((400, 800)),
                                          transforms.ToTensor(),
                                          transforms.Normalize([0.5], [0.5]),
                                      ]), )
@@ -128,7 +128,7 @@ class Trainer:
 
                 self.accelerator.backward(loss)
 
-                if self.cfgs.train.max_grad_norm and self.accelerator.sync_gradients:  # fine-tuning
+                if self.accelerator.sync_gradients:  # fine-tuning
                     self.accelerator.clip_grad_norm_(self.net.parameters(), 1.)
 
                 self.optimizer.step()
@@ -152,11 +152,11 @@ class Trainer:
         mean = torch.tensor([0.5]).to(self.accelerator.device)
         std = torch.tensor([0.5]).to(self.accelerator.device)
         psnr = 0
-        for step, (img, img_clean, img_mask) in enumerate(self.test_loader):
-            img = img.to(self.accelerator.device)
+        for step, (img_mark, img_clean) in enumerate(self.test_loader):
             img_clean = img_clean.to(self.accelerator.device)
+            img_mark = img_mark.to(self.accelerator.device)
 
-            pred = self.net(img)
+            pred = self.net(img_mark)
 
             psnr += cal_psnr(pred, img_clean, mean, std).sum().item()
 
@@ -175,8 +175,8 @@ def make_args():
     parser.add_argument("--test_data", default='/data1/dzy/dataset_raw/skeb/test.json', type=str)
     # parser.add_argument("--water_mark", default='./water_mark4.png', type=str)
     # parser.add_argument("--water_mark_mask", default='./water_mark4_mask.png', type=str)
-    parser.add_argument("--bs", default=4, type=int)
-    parser.add_argument("--lr", default=8e-4, type=float)
+    parser.add_argument("--bs", default=32, type=int)
+    parser.add_argument("--lr", default=1e-3, type=float)
     parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument("--log_dir", default='logs/', type=str)
