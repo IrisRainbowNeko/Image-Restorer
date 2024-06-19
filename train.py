@@ -16,7 +16,7 @@ from transformers.optimization import Adafactor
 from data import WaterMarkDataset, PairDataset, PadResize, ShortResize
 from models import get_NAFNet
 from utils import cal_psnr
-from lbp_loss import LBPLoss
+from loss import CharbonnierLoss, MSSSIMLoss, GWLoss
 
 class Trainer:
     def __init__(self, args):
@@ -60,7 +60,11 @@ class Trainer:
             self.optimizer = torch.optim.AdamW(groups, lr=self.args.lr, betas=(0.9, 0.9))
         else:
             self.optimizer = Adafactor(groups, lr=self.args.lr, relative_step=False)
-        self.criterion = nn.SmoothL1Loss()
+
+        self.cb_loss = CharbonnierLoss()
+        self.ssim_loss = MSSSIMLoss()
+        self.gw_loss = GWLoss()
+
         self.criterion_mask = nn.SmoothL1Loss(reduction='none')
         #self.loss_lbp = LBPLoss()
         print(len(self.train_loader))
@@ -114,6 +118,9 @@ class Trainer:
 
     def train(self):
         loss_sum = 0
+        cb_loss_sum = 0
+        gw_loss_sum = 0
+        ssim_loss_sum = 0
         for ep in range(self.args.epochs):
             self.net.train()
             for step, (img, img_clean) in enumerate(self.train_loader):
@@ -124,7 +131,12 @@ class Trainer:
                 pred = self.net(img)
 
                 # loss = self.alpha*self.criterion(pred, img_clean) + (1-self.alpha)*self.local_loss(img_clean, pred, img_mask)
-                loss = self.criterion(pred, img_clean) #+ 0.5*self.loss_lbp(pred*50, img_clean*50)
+                #loss = self.criterion(pred, img_clean) #+ 0.5*self.loss_lbp(pred*50, img_clean*50)
+
+                cb_loss = self.cb_loss(pred, img_clean)
+                gw_loss = self.gw_loss(pred, img_clean)
+                ssim_loss = self.ssim_loss(pred, img_clean)
+                loss = cb_loss + gw_loss + ssim_loss
 
                 self.accelerator.backward(loss)
 
@@ -136,12 +148,21 @@ class Trainer:
                 self.scheduler.step()
 
                 loss_sum += loss.item()
+                cb_loss_sum += cb_loss.item()
+                gw_loss_sum += gw_loss.item()
+                ssim_loss_sum += ssim_loss.item()
 
                 if step%self.args.log_step == 0:
                     logger.info(f'[{ep+1}/{self.args.epochs}]<{step+1}/{len(self.train_loader)}>, '
                                 f'loss:{loss_sum/self.args.log_step:.3e}, '
+                                f'cb_loss:{cb_loss_sum/self.args.log_step:.3e}, '
+                                f'gw_loss:{gw_loss_sum/self.args.log_step:.3e}, '
+                                f'ssim_loss:{ssim_loss_sum/self.args.log_step:.3e}'
                                 f'lr:{self.scheduler.get_lr()[0]:.3e}')
                     loss_sum = 0
+                    cb_loss_sum = 0
+                    gw_loss_sum = 0
+                    ssim_loss_sum = 0
             self.evaluate()
             if self.accelerator.is_local_main_process:
                 torch.save(self.net.state_dict(), f'output/ep_{ep}.pth')
