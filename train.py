@@ -154,10 +154,10 @@ class Trainer:
 
                 if step%self.args.log_step == 0:
                     logger.info(f'[{ep+1}/{self.args.epochs}]<{step+1}/{len(self.train_loader)}>, '
-                                f'loss:{loss_sum/self.args.log_step:.3e}, '
-                                f'cb_loss:{cb_loss_sum/self.args.log_step:.3e}, '
-                                f'gw_loss:{gw_loss_sum/self.args.log_step:.3e}, '
-                                f'ssim_loss:{ssim_loss_sum/self.args.log_step:.3e}, '
+                                f'loss:{loss_sum/self.args.log_step:.3f}, '
+                                f'cb_loss:{cb_loss_sum/self.args.log_step:.3f}, '
+                                f'gw_loss:{gw_loss_sum/self.args.log_step:.3f}, '
+                                f'ssim_loss:{ssim_loss_sum/self.args.log_step:.3f}, '
                                 f'lr:{self.scheduler.get_lr()[0]:.3e}')
                     loss_sum = 0
                     cb_loss_sum = 0
