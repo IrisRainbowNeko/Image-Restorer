@@ -70,8 +70,12 @@ class Trainer:
                                                  pct_start=0.01)
 
     def collate_fn(self, batch):
-        size = (random.randint(500, 1000), random.randint(500, 1000))
-        crop = transforms.RandomCrop(size)
+        limit = 700 * 700
+        w = random.randint(400, 1000)
+        max_h = min(limit // w, 1000)
+        h = random.randint(400, max_h)
+
+        crop = transforms.RandomCrop((h,w), pad_if_needed=True, padding_mode='reflect')
 
         imgs, targets = [], []
         for item in batch:
@@ -86,7 +90,7 @@ class Trainer:
         self.data_train = PairDataset(data_file=self.args.train_data,
                                       noise_std=0,
                                       transform=transforms.Compose([
-                                          ShortResize(1000),
+                                          ShortResize(512),
                                           #transforms.CenterCrop((400, 800)),
                                           transforms.ToTensor(),
                                           transforms.Normalize([0.5], [0.5]),

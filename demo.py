@@ -90,5 +90,5 @@ if __name__ == '__main__':
 
     os.makedirs(args.out_dir, exist_ok=True)
 
-    infer = Infer(args.ckpt, args.arch, crop=True)
+    infer = Infer(args.ckpt, args.arch, crop=args.crop)
     infer.infer(args.img, args.out_dir)
