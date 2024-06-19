@@ -136,7 +136,7 @@ class Trainer:
                 cb_loss = self.cb_loss(pred, img_clean)
                 gw_loss = self.gw_loss(pred, img_clean)
                 ssim_loss = self.ssim_loss(pred, img_clean)
-                loss = cb_loss + gw_loss + ssim_loss
+                loss = cb_loss + 0.5*gw_loss + ssim_loss
 
                 self.accelerator.backward(loss)
 
@@ -157,7 +157,7 @@ class Trainer:
                                 f'loss:{loss_sum/self.args.log_step:.3e}, '
                                 f'cb_loss:{cb_loss_sum/self.args.log_step:.3e}, '
                                 f'gw_loss:{gw_loss_sum/self.args.log_step:.3e}, '
-                                f'ssim_loss:{ssim_loss_sum/self.args.log_step:.3e}'
+                                f'ssim_loss:{ssim_loss_sum/self.args.log_step:.3e}, '
                                 f'lr:{self.scheduler.get_lr()[0]:.3e}')
                     loss_sum = 0
                     cb_loss_sum = 0
