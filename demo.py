@@ -2,6 +2,7 @@ import os
 from argparse import ArgumentParser
 
 import torch
+import numpy as np
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
@@ -49,6 +50,21 @@ class Infer:
         img_raw = Image.open(path).convert('RGB')
         img = self.trans(img_raw)
         return img, img_raw
+    
+    def calculate_psnr(self, img1, img2):
+        # 确保输入的图像数组是浮点型
+        img1 = img1.astype(np.float64)
+        img2 = img2.astype(np.float64)
+        
+        # 计算 MSE
+        mse = np.mean((img1 - img2) ** 2)
+        if mse == 0:
+            return float('inf')  # 两个图像完全相同
+
+        # 计算 PSNR
+        max_pixel = 255.0
+        psnr = 20 * np.log10(max_pixel / np.sqrt(mse))
+        return psnr
 
     @torch.no_grad()
     def infer_one(self, path):
@@ -60,14 +76,18 @@ class Infer:
 
         pred = transforms.ToPILImage()(pred)
         if self.crop:
-            img_raw = self.resize(img_raw)
+            img_new = self.resize(img_raw)
             wm, hm = pred.size
-            w, h = img_raw.size
-            img_raw.paste(pred, (0, round((h-hm)/2)))
+            w, h = img_new.size
+            img_new.paste(pred, (0, round((h-hm)/2)))
         else:
-            img_raw = pred
+            img_new = pred
+        
+        img_raw_np = np.array(img_raw)
+        img_new_np = np.array(img_new)
+        print(f'{path} psnr:{self.calculate_psnr(img_raw_np, img_new_np)}')
 
-        return img_raw
+        return img_new
 
     def infer(self, path, out_dir):
         if os.path.isdir(path):
