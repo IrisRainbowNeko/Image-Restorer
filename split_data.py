@@ -9,12 +9,12 @@ webp_sample=sorted([os.path.join('webp_sample', x) for x in os.listdir(root_mark
 #png_origin = sorted(os.listdir('/data1/dzy/dataset_raw/skeb/png_origin'))
 #webp_sample = sorted(os.listdir('/data1/dzy/dataset_raw/skeb/webp_sample'))
 
-rate=0.8
+rate=0.9
 N_train = int(len(png_origin)*rate)
 N_test = len(png_origin)-N_train
 
-train_list=[[png, webp] for png, webp in zip(png_origin[:N_train], webp_sample[:N_train])]
-test_list=[[png, webp] for png, webp in zip(png_origin[N_train:], webp_sample[N_train:])]
+train_list={png: webp for png, webp in zip(png_origin[:N_train], webp_sample[:N_train])}
+test_list={png: webp for png, webp in zip(png_origin[N_train:], webp_sample[N_train:])}
 
 with open('/data1/dzy/dataset_raw/skeb/train.json', 'w') as file:
     json.dump(train_list, file, indent=2)

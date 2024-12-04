@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
 
-from layers import LayerNorm2d
+from .layers import LayerNorm2d
 
 
 def checkpoint(function):
@@ -162,7 +162,6 @@ class NAFNet(nn.Module):
             for encoder in encoder_stages:
                 x = encoder(x)
                 encs.append(x)
-                print(x.shape)
             x = down(x)
 
         x = self.middle_blks(x)
@@ -172,7 +171,6 @@ class NAFNet(nn.Module):
             x = up(x)
             for decoder in decoder_stages:
                 skip_count -= 1
-                print('up', x.shape)
                 x = x + encs[skip_count]
                 x = decoder(x)
 

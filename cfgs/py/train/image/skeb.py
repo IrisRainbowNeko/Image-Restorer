@@ -8,7 +8,7 @@ from rainbowneko.models.wrapper import SingleWrapper
 from rainbowneko.parser import CfgWDModelParser
 from rainbowneko.train.data import BaseBucket
 from rainbowneko.train.data import BaseDataset
-from rainbowneko.train.data.handler import HandlerChain, ImageHandler, LoadImageHandler
+from rainbowneko.train.data.handler import HandlerChain, ImageHandler, LoadImageHandler, HandlerGroup
 from rainbowneko.train.data.source import ImagePairSource
 from rainbowneko.train.loss import LossContainer, LossGroup
 from rainbowneko.utils import neko_cfg
@@ -24,6 +24,7 @@ def make_cfg():
     dict(
         _base_=[train_base, tuning_base],
         exp_dir=f'exps/skeb-v1',
+        mixed_precision='fp16',
 
         model_part=CfgWDModelParser([
             dict(
@@ -75,7 +76,7 @@ def make_cfg():
 @neko_cfg
 def cfg_data():
     dict(
-        dataset1=partial(BaseDataset, batch_size=4, loss_weight=1.0,
+        dataset1=partial(BaseDataset, batch_size=2, loss_weight=1.0,
             source=dict(
                 data_source1=ImagePairSource(
                     img_root='/data1/dzy/dataset_raw/skeb/',
@@ -83,13 +84,24 @@ def cfg_data():
                 ),
             ),
             handler=HandlerChain(handlers=dict(
-                load=LoadImageHandler(),
-                image=ImageHandler(transform=T.Compose([
-                    PadResize(800),
-                    T.CenterCrop((400, 800)),
-                    T.ToTensor(),
-                    T.Normalize([0.5], [0.5]),
-                ]))
+                group_mark=HandlerChain(handlers=dict(
+                    load=LoadImageHandler(),
+                    image=ImageHandler(transform=T.Compose([
+                        PadResize(800),
+                        T.CenterCrop((400, 800)),
+                        T.ToTensor(),
+                        T.Normalize([0.5], [0.5]),
+                    ])),
+                )),
+                group_clean=HandlerChain(handlers=dict(
+                    load=LoadImageHandler(),
+                    image=ImageHandler(transform=T.Compose([
+                        PadResize(800),
+                        T.CenterCrop((400, 800)),
+                        T.ToTensor(),
+                        T.Normalize([0.5], [0.5]),
+                    ])),
+                ), key_map_in=("label -> image",), key_map_out=("image -> label")),
             )),
             bucket=BaseBucket(),
         )
@@ -112,13 +124,24 @@ def cfg_evaluator():
                     ),
                 ),
                 handler=HandlerChain(handlers=dict(
-                    load=LoadImageHandler(),
-                    image=ImageHandler(transform=T.Compose([
-                        PadResize(800),
-                        T.CenterCrop((400, 800)),
-                        T.ToTensor(),
-                        T.Normalize([0.5], [0.5]),
-                    ]))
+                    group_mark=HandlerChain(handlers=dict(
+                        load=LoadImageHandler(),
+                        image=ImageHandler(transform=T.Compose([
+                            PadResize(800),
+                            T.CenterCrop((400, 800)),
+                            T.ToTensor(),
+                            T.Normalize([0.5], [0.5]),
+                        ])),
+                    )),
+                    group_clean=HandlerChain(handlers=dict(
+                        load=LoadImageHandler(),
+                        image=ImageHandler(transform=T.Compose([
+                            PadResize(800),
+                            T.CenterCrop((400, 800)),
+                            T.ToTensor(),
+                            T.Normalize([0.5], [0.5]),
+                        ])),
+                    ), key_map_in=("label -> image",), key_map_out=("image -> label")),
                 )),
                 bucket=BaseBucket(),
             )
