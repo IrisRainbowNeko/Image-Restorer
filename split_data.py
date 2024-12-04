@@ -1,11 +1,10 @@
 import os
-from pathlib import Path
 import json
 
-root_clean=Path('/data1/dzy/dataset_raw/skeb/png_origin')
-png_origin=sorted([str(x) for x in root_clean.iterdir()])
-root_mark = Path('/data1/dzy/dataset_raw/skeb/webp_sample')
-webp_sample=sorted([str(x) for x in root_mark.iterdir()])
+root_clean='/data1/dzy/dataset_raw/skeb/png_origin'
+png_origin=sorted([os.path.join('png_origin', x) for x in os.listdir(root_clean)])
+root_mark = '/data1/dzy/dataset_raw/skeb/webp_sample'
+webp_sample=sorted([os.path.join('webp_sample', x) for x in os.listdir(root_mark)])
 
 #png_origin = sorted(os.listdir('/data1/dzy/dataset_raw/skeb/png_origin'))
 #webp_sample = sorted(os.listdir('/data1/dzy/dataset_raw/skeb/webp_sample'))
