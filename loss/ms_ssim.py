@@ -64,6 +64,7 @@ class MSSSIMLoss(torch.nn.Module):
 
 
     def forward(self, img1, img2):
-        img1 = torch.relu(img1)
-        img2 = torch.relu(img2)
-        return 1-self.ms_ssim(img1, img2)
+        with torch.autocast(device_type='cuda', dtype=img1.dtype, enabled=True):
+            img1 = torch.relu(img1)
+            img2 = torch.relu(img2)
+            return 1-self.ms_ssim(img1, img2)

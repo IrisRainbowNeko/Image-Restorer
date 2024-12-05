@@ -51,16 +51,17 @@ class GWLoss(_Loss):
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         b, c, w, h = input.shape
 
-        weight_x = self.sobel_x.expand(c, 1, 3, 3)
-        weight_y = self.sobel_y.expand(c, 1, 3, 3)
+        with torch.autocast(device_type='cuda', dtype=input.dtype, enabled=True):
+            weight_x = self.sobel_x.expand(c, 1, 3, 3)
+            weight_y = self.sobel_y.expand(c, 1, 3, 3)
 
-        Ix1 = F.conv2d(input, weight_x, stride=1, padding=1, groups=c)
-        Ix2 = F.conv2d(target, weight_x, stride=1, padding=1, groups=c)
-        Iy1 = F.conv2d(input, weight_y, stride=1, padding=1, groups=c)
-        Iy2 = F.conv2d(target, weight_y, stride=1, padding=1, groups=c)
-        dx = torch.abs(Ix1 - Ix2)
-        dy = torch.abs(Iy1 - Iy2)
-        loss = (1 + 4 * dx) * (1 + 4 * dy) * torch.abs(input - target)
+            Ix1 = F.conv2d(input, weight_x, stride=1, padding=1, groups=c)
+            Ix2 = F.conv2d(target, weight_x, stride=1, padding=1, groups=c)
+            Iy1 = F.conv2d(input, weight_y, stride=1, padding=1, groups=c)
+            Iy2 = F.conv2d(target, weight_y, stride=1, padding=1, groups=c)
+            dx = torch.abs(Ix1 - Ix2)
+            dy = torch.abs(Iy1 - Iy2)
+            loss = (1 + 4 * dx) * (1 + 4 * dy) * torch.abs(input - target)
 
         if self.reduction=='mean':
             return torch.mean(loss)

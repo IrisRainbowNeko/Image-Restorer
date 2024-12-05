@@ -18,6 +18,7 @@ from cfgs.py.train import train_base, tuning_base
 from data import PadResize
 from loss import CharbonnierLoss, MSSSIMLoss, GWLoss
 from models import get_NAFNet
+from bitsandbytes.optim import AdamW8bit
 
 
 def make_cfg():
@@ -50,7 +51,7 @@ def make_cfg():
                 LossContainer(MSSSIMLoss()),
             ]),
 
-            optimizer=partial(torch.optim.AdamW, betas=(0.9, 0.9)),
+            optimizer=partial(AdamW8bit, betas=(0.9, 0.9)),
 
             scale_lr=False,
             scheduler=dict(
@@ -79,8 +80,8 @@ def cfg_data():
         dataset1=partial(BaseDataset, batch_size=2, loss_weight=1.0,
             source=dict(
                 data_source1=ImagePairSource(
-                    img_root='/data1/dzy/dataset_raw/skeb/',
-                    label_file='/data1/dzy/dataset_raw/skeb/train.json',
+                    img_root='/mnt/SSD_3TB/dzy/datas/skeb/',
+                    label_file='/mnt/SSD_3TB/dzy/datas/skeb/train.json',
                 ),
             ),
             handler=HandlerChain(handlers=dict(
@@ -101,7 +102,7 @@ def cfg_data():
                         T.ToTensor(),
                         T.Normalize([0.5], [0.5]),
                     ])),
-                ), key_map_in=("label -> image",), key_map_out=("image -> label")),
+                ), key_map_in=("label -> image",), key_map_out=("image -> label",)),
             )),
             bucket=BaseBucket(),
         )
@@ -119,8 +120,8 @@ def cfg_evaluator():
             dataset1=partial(BaseDataset, batch_size=4, loss_weight=1.0,
                 source=dict(
                     data_source1=ImagePairSource(
-                        img_root='/data1/dzy/dataset_raw/skeb/',
-                        label_file='/data1/dzy/dataset_raw/skeb/test.json',
+                        img_root='/mnt/SSD_3TB/dzy/datas/skeb/',
+                        label_file='/mnt/SSD_3TB/dzy/datas/skeb/test.json',
                     ),
                 ),
                 handler=HandlerChain(handlers=dict(
@@ -141,7 +142,7 @@ def cfg_evaluator():
                             T.ToTensor(),
                             T.Normalize([0.5], [0.5]),
                         ])),
-                    ), key_map_in=("label -> image",), key_map_out=("image -> label")),
+                    ), key_map_in=("label -> image",), key_map_out=("image -> label",)),
                 )),
                 bucket=BaseBucket(),
             )
