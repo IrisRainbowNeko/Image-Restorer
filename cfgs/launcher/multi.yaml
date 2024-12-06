@@ -1,4 +1,4 @@
-gpu_ids: all # which gpu to use, 'all' or '0,1,2,3' to specify
+gpu_ids: '4,5,6,7' # which gpu to use, 'all' or '0,1,2,3' to specify
 num_processes: 4 # how many gpu to use
 
 compute_environment: LOCAL_MACHINE

@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=7 python demo.py --arch mark-xl --ckpt exps/skeb-v1/ckpts/NAF-de_watermark-xl-4000.ckpt --img result/ --crop

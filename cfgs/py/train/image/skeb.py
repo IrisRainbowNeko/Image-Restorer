@@ -11,7 +11,7 @@ from rainbowneko.train.data import BaseDataset
 from rainbowneko.train.data.handler import HandlerChain, ImageHandler, LoadImageHandler, HandlerGroup
 from rainbowneko.train.data.source import ImagePairSource
 from rainbowneko.train.loss import LossContainer, LossGroup
-from rainbowneko.utils import neko_cfg
+from rainbowneko.utils import neko_cfg, CosineLR
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 from cfgs.py.train import train_base, tuning_base
@@ -43,7 +43,8 @@ def make_cfg():
             train_epochs=10,
             workers=4,
             max_grad_norm=None,
-            save_step=2000,
+            save_step=5000,
+            gradient_accumulation_steps=4,
 
             loss=LossGroup([
                 LossContainer(CharbonnierLoss()),
@@ -54,9 +55,8 @@ def make_cfg():
             optimizer=partial(AdamW8bit, betas=(0.9, 0.9)),
 
             scale_lr=False,
-            scheduler=dict(
-                name='cosine',
-                num_warmup_steps=1000,
+            scheduler=CosineLR(
+                warmup_steps=1000,
             ),
             metrics=MetricGroup(metric_dict=dict(
                 psnr=MetricContainer(PeakSignalNoiseRatio(data_range=tuple([-1.0, 1.0]))),
@@ -80,8 +80,8 @@ def cfg_data():
         dataset1=partial(BaseDataset, batch_size=2, loss_weight=1.0,
             source=dict(
                 data_source1=ImagePairSource(
-                    img_root='/mnt/SSD_3TB/dzy/datas/skeb/',
-                    label_file='/mnt/SSD_3TB/dzy/datas/skeb/train.json',
+                    img_root='/data1/dzy/dataset_raw/skeb/',
+                    label_file='/data1/dzy/dataset_raw/skeb/train.json',
                 ),
             ),
             handler=HandlerChain(handlers=dict(
@@ -120,8 +120,8 @@ def cfg_evaluator():
             dataset1=partial(BaseDataset, batch_size=4, loss_weight=1.0,
                 source=dict(
                     data_source1=ImagePairSource(
-                        img_root='/mnt/SSD_3TB/dzy/datas/skeb/',
-                        label_file='/mnt/SSD_3TB/dzy/datas/skeb/test.json',
+                        img_root='/data1/dzy/dataset_raw/skeb/',
+                        label_file='/data1/dzy/dataset_raw/skeb/test.json',
                     ),
                 ),
                 handler=HandlerChain(handlers=dict(

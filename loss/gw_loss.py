@@ -51,6 +51,9 @@ class GWLoss(_Loss):
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         b, c, w, h = input.shape
 
+        self.sobel_x = self.sobel_x.to(input.device)
+        self.sobel_y = self.sobel_y.to(input.device)
+
         with torch.autocast(device_type='cuda', dtype=input.dtype, enabled=True):
             weight_x = self.sobel_x.expand(c, 1, 3, 3)
             weight_y = self.sobel_y.expand(c, 1, 3, 3)

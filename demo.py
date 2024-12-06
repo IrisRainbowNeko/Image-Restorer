@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 
+from sympy import im
 import torch
 import numpy as np
 from PIL import Image
@@ -10,6 +11,7 @@ from tqdm import tqdm
 from data import PadResize
 from models import get_NAFNet
 from utils import get_ext
+from copy import deepcopy
 
 device = 'cuda'
 types_support = ['bmp', 'gif', 'ico', 'jpeg', 'jpg', 'png', 'tiff', 'webp']
@@ -18,7 +20,7 @@ class Infer:
     def __init__(self, ckpt, arch, crop=True):
         self.net = get_NAFNet(arch)
 
-        sd = torch.load(ckpt, map_location='cpu')
+        sd = torch.load(ckpt, map_location='cpu')['base']
         if next(iter(sd.keys())).startswith('module'):
             sd = {k[7:]:v for k,v in sd.items()}
         self.net.load_state_dict(sd)
@@ -57,7 +59,8 @@ class Infer:
         img2 = img2.astype(np.float64)
         
         # 计算 MSE
-        mse = np.mean((img1 - img2) ** 2)
+        mse = np.sum((img1 - img2) ** 2)
+        print(mse)
         if mse == 0:
             return float('inf')  # 两个图像完全相同
 
@@ -70,13 +73,21 @@ class Infer:
     def infer_one(self, path):
         img, img_raw = self.load_image(path)
         img = img.to(device).unsqueeze(0)
+
+        from torchanalyzer import ModelIOAnalyzer, TorchViser, FlowViser
+
+        analyzer = ModelIOAnalyzer(self.net)
+        info = analyzer.analyze(img)
+        FlowViser().show(self.net, info)
+        0/0
+
         pred = self.net(img)
         pred = pred*self.std+self.mean
         pred = pred.squeeze(0).clip(0, 1)
 
         pred = transforms.ToPILImage()(pred)
         if self.crop:
-            img_new = self.resize(img_raw)
+            img_new = self.resize(deepcopy(img_raw))
             wm, hm = pred.size
             w, h = img_new.size
             img_new.paste(pred, (0, round((h-hm)/2)))

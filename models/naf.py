@@ -22,13 +22,15 @@ def checkpoint(function):
 class SimpleGate(nn.Module):
     def forward(self, x):
         x1, x2 = x.chunk(2, dim=1)
-        return x1 * x2
+        norm = (x1.norm(2, dim=-1).sqrt() * x2.norm(2, dim=-1).sqrt()).unsqueeze(-1)
+        return (x1/norm) * x2
 
 
 class GEGLU(nn.Module):
     def forward(self, x):
         x1, x2 = x.chunk(2, dim=1)
-        return x1 * F.gelu(x2)
+        norm = (x1.norm(2, dim=-1).sqrt() * x2.norm(2, dim=-1).sqrt()).unsqueeze(-1)
+        return x1 * (F.gelu(x2)/norm)
 
 
 class NAFBlock(nn.Module):
