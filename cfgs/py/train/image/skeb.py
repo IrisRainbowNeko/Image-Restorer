@@ -24,12 +24,12 @@ from bitsandbytes.optim import AdamW8bit
 def make_cfg():
     dict(
         _base_=[train_base, tuning_base],
-        exp_dir=f'exps/skeb-v1',
+        exp_dir=f'exps/skeb-l-v2',
         mixed_precision='fp16',
 
         model_part=CfgWDModelParser([
             dict(
-                lr=1e-4,
+                lr=5e-4,
                 layers=[''],  # train all layers
             )
         ], weight_decay=1e-2),
@@ -41,10 +41,10 @@ def make_cfg():
 
         train=dict(
             train_epochs=10,
-            workers=4,
+            workers=8,
             max_grad_norm=None,
-            save_step=5000,
-            gradient_accumulation_steps=4,
+            save_step=4000,
+            gradient_accumulation_steps=1,
 
             loss=LossGroup([
                 LossContainer(CharbonnierLoss()),
@@ -65,8 +65,8 @@ def make_cfg():
         ),
 
         model=dict(
-            name='NAF-de_watermark-xl',
-            wrapper=partial(SingleWrapper, model=get_NAFNet('mark-xl'))
+            name='NAF-de_watermark-l',
+            wrapper=partial(SingleWrapper, model=get_NAFNet('mark-l'))
         ),
 
         data_train=cfg_data(), # config can be split into another function with @neko_cfg
@@ -74,14 +74,16 @@ def make_cfg():
         evaluator=cfg_evaluator(),
     )
 
+data_root = '/GPUFS/sysu_pxwei_1/dzy/datas/skeb'
+
 @neko_cfg
 def cfg_data():
     dict(
-        dataset1=partial(BaseDataset, batch_size=2, loss_weight=1.0,
+        dataset1=partial(BaseDataset, batch_size=8, loss_weight=1.0,
             source=dict(
                 data_source1=ImagePairSource(
-                    img_root='/data1/dzy/dataset_raw/skeb/',
-                    label_file='/data1/dzy/dataset_raw/skeb/train.json',
+                    img_root=data_root,
+                    label_file=f'{data_root}/train.json',
                 ),
             ),
             handler=HandlerChain(handlers=dict(
@@ -111,7 +113,7 @@ def cfg_data():
 @neko_cfg
 def cfg_evaluator():
     partial(Evaluator,
-        interval=500,
+        interval=2000,
         metric=MetricGroup(metric_dict=dict(
             psnr=MetricContainer(PeakSignalNoiseRatio(data_range=tuple([-1.0, 1.0]))),
             ssim=MetricContainer(StructuralSimilarityIndexMeasure(data_range=tuple([-1.0, 1.0]))),
@@ -120,8 +122,8 @@ def cfg_evaluator():
             dataset1=partial(BaseDataset, batch_size=4, loss_weight=1.0,
                 source=dict(
                     data_source1=ImagePairSource(
-                        img_root='/data1/dzy/dataset_raw/skeb/',
-                        label_file='/data1/dzy/dataset_raw/skeb/test.json',
+                        img_root=data_root,
+                        label_file=f'{data_root}/test.json',
                     ),
                 ),
                 handler=HandlerChain(handlers=dict(

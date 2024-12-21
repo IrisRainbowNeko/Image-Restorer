@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
+import math
 
 from .layers import LayerNorm2d
 
@@ -22,15 +23,15 @@ def checkpoint(function):
 class SimpleGate(nn.Module):
     def forward(self, x):
         x1, x2 = x.chunk(2, dim=1)
-        norm = (x1.norm(2, dim=1, keepdim=True).sqrt() * x2.norm(2, dim=1, keepdim=True).sqrt())
-        return (x1/norm) * x2
+        M_x = (x1.norm(2, dim=1, keepdim=True).sqrt() * x2.norm(2, dim=1, keepdim=True).sqrt())/(x1.shape[1]**0.3)
+        return (x1/M_x) * x2
 
 
 class GEGLU(nn.Module):
     def forward(self, x):
         x1, x2 = x.chunk(2, dim=1)
-        norm = (x1.norm(2, dim=1, keepdim=True).sqrt() * x2.norm(2, dim=1, keepdim=True).sqrt())
-        return x1 * F.gelu(x2)
+        M_x = (x1.norm(2, dim=1, keepdim=True).sqrt() * x2.norm(2, dim=1, keepdim=True).sqrt())/(x1.shape[1]**0.3)
+        return (x1/M_x) * F.gelu(x2)
 
 
 class NAFBlock(nn.Module):
@@ -51,7 +52,7 @@ class NAFBlock(nn.Module):
         )
 
         # SimpleGate
-        self.sg = GEGLU()
+        self.sg = SimpleGate()
 
         ffn_channel = FFN_Expand * c
         self.conv4 = nn.Conv2d(in_channels=c, out_channels=ffn_channel, kernel_size=1, padding=0, stride=1, groups=1, bias=True)
@@ -64,8 +65,8 @@ class NAFBlock(nn.Module):
         self.dropout1 = nn.Dropout(drop_out_rate) if drop_out_rate > 0. else nn.Identity()
         self.dropout2 = nn.Dropout(drop_out_rate) if drop_out_rate > 0. else nn.Identity()
 
-        self.beta = nn.Parameter(torch.zeros((1, c, 1, 1)), requires_grad=True)
-        self.gamma = nn.Parameter(torch.zeros((1, c, 1, 1)), requires_grad=True)
+        self.beta = nn.Parameter(torch.ones((1, c, 1, 1)), requires_grad=True)
+        self.gamma = nn.Parameter(torch.ones((1, c, 1, 1)), requires_grad=True)
 
     @checkpoint
     def forward(self, inp):
@@ -99,7 +100,7 @@ class NAFStage(nn.Module):
         self.proj_in = nn.Conv2d(in_ch, in_ch, 1)
         self.proj_out = nn.Conv2d(in_ch, out_ch, 1)
 
-        self.gamma = nn.Parameter(torch.zeros((1, out_ch, 1, 1)), requires_grad=True)
+        self.gamma = nn.Parameter(torch.ones((1, out_ch, 1, 1)), requires_grad=True)
 
         self.blocks = nn.ModuleList([
             NAFBlock(in_ch, FFN_Expand=FFN_Expand) for _ in range(N_block)
@@ -118,7 +119,7 @@ class NAFStage(nn.Module):
 
 class NAFNet(nn.Module):
 
-    def __init__(self, img_channel=3, width=(16, 32, 64, 128), middle_blk_num=1, enc_blk_nums=[], dec_blk_nums=[]):
+    def __init__(self, img_channel=3, width=(16, 32, 64, 128), middle_blk_num=1, group=32, enc_blk_nums=[], dec_blk_nums=[]):
         super().__init__()
 
         self.intro = nn.Conv2d(in_channels=img_channel, out_channels=width[0], kernel_size=3, padding=1, stride=1, groups=1,
@@ -134,12 +135,12 @@ class NAFNet(nn.Module):
 
         chan = width
         for i, (num_stage, num_blk) in enumerate(enc_blk_nums):
-            self.encoders.append(nn.ModuleList([NAFStage(width[i], width[i], num_blk) for _ in range(num_stage)]))
+            self.encoders.append(nn.ModuleList([NAFStage(width[i], width[i], num_blk, group=group) for _ in range(num_stage)]))
             self.downs.append(
                 nn.Conv2d(width[i], width[i+1], 2, 2)
             )
 
-        self.middle_blks = nn.Sequential(NAFStage(width[-1], width[-1], middle_blk_num))
+        self.middle_blks = nn.Sequential(NAFStage(width[-1], width[-1], middle_blk_num, group=group))
 
         for i, (num_stage, num_blk) in enumerate(dec_blk_nums):
             self.ups.append(
@@ -148,7 +149,7 @@ class NAFNet(nn.Module):
                     nn.PixelShuffle(2)
                 )
             )
-            self.decoders.append(nn.ModuleList([NAFStage(width[-i-2], width[-i-2], num_blk) for _ in range(num_stage)]))
+            self.decoders.append(nn.ModuleList([NAFStage(width[-i-2], width[-i-2], num_blk, group=group) for _ in range(num_stage)]))
 
         self.padder_size = 2 ** len(self.encoders)
 
@@ -190,12 +191,12 @@ class NAFNet(nn.Module):
 
 
 def get_NAFNet(arch):
-    if arch == 'mark-s':
-        return NAFNet(width=24, enc_blk_nums=[(1,1), (1,2), (1,4), (1,6)], middle_blk_num=8, dec_blk_nums=[(1,2), (1,2), (1,1), (1,1)])
-    elif arch == 'mark-m':
-        return NAFNet(width=24, enc_blk_nums=[(1,1), (1,2), (1,4), (1,6)], middle_blk_num=8, dec_blk_nums=[(2,2), (2,2), (2,2), (2,1)])
+    if arch == 'mark-t':
+        return NAFNet(width=(24, 48, 64, 128), enc_blk_nums=[(1,1), (1,2), (1,4)], middle_blk_num=4, dec_blk_nums=[(1,4), (1,2), (1,1)], group=8)
+    elif arch == 'mark-s':
+        return NAFNet(width=(32, 64, 128, 192), enc_blk_nums=[(2,1), (2,2), (2,4)], middle_blk_num=6, dec_blk_nums=[(2,4), (2,2), (2,1)], group=8)
     elif arch == 'mark-l':
-        return NAFNet(width=(32, 128, 256, 512, 768), enc_blk_nums=[(1,1), (2,2), (2,4), (2,8)], middle_blk_num=8, dec_blk_nums=[(2,12), (2,6), (2,3), (1,2)])
+        return NAFNet(width=(64, 160, 320, 640, 800), enc_blk_nums=[(2,1), (2,2), (2,4), (2,6)], middle_blk_num=6, dec_blk_nums=[(2,9), (2,6), (2,3), (2,1)])
     elif arch == 'mark-xl':
         return NAFNet(width=(96, 320, 512, 832, 1280), enc_blk_nums=[(1,2), (2,2), (2,4), (2,8)],
                       middle_blk_num=8, dec_blk_nums=[(2,12), (2,6), (2,3), (1,3)])
@@ -203,11 +204,25 @@ def get_NAFNet(arch):
         return NAFNet(width=(96, 320, 512, 832, 1280), enc_blk_nums=[(2,2), (3,2), (3,4), (3,10)],
                       middle_blk_num=10, dec_blk_nums=[(3,15), (3,6), (3,3), (2,3)])
 
+def get_NAFNet_w(arch):
+    if arch == 'mark-s':
+        return NAFNet(width=24, enc_blk_nums=[(1,1), (1,2), (1,4), (1,6)], middle_blk_num=8, dec_blk_nums=[(1,2), (1,2), (1,1), (1,1)])
+    elif arch == 'mark-m':
+        return NAFNet(width=24, enc_blk_nums=[(1,1), (1,2), (1,4), (1,6)], middle_blk_num=8, dec_blk_nums=[(2,2), (2,2), (2,2), (2,1)])
+    elif arch == 'mark-l':
+        return NAFNet(width=(32, 128, 256, 512, 768), enc_blk_nums=[(1,1), (2,2), (2,4), (2,8)], middle_blk_num=8, dec_blk_nums=[(2,12), (2,6), (2,3), (1,2)])
+    elif arch == 'mark-xl':
+        return NAFNet(width=(128, 384, 768, 1280, 1600), enc_blk_nums=[(2,1), (2,1), (3,2), (3,2)],
+                      middle_blk_num=4, dec_blk_nums=[(3,3), (3,3), (2,2), (2,2)])
+    elif arch == 'mark-H':
+        return NAFNet(width=(96, 320, 512, 832, 1280), enc_blk_nums=[(2,2), (3,2), (3,4), (3,10)],
+                      middle_blk_num=10, dec_blk_nums=[(3,15), (3,6), (3,3), (2,3)])
+
 if __name__ == '__main__':
     from torchanalyzer import TorchViser, ModelFlopsAnalyzer, ModelTimeMemAnalyzer
 
-    model = get_NAFNet('mark-xl')
-    inputs = torch.randn(1, 3, 400, 800)
+    model = get_NAFNet('mark-l').cuda()
+    inputs = torch.randn(1, 3, 400, 800).cuda()
 
     analyzer = ModelFlopsAnalyzer(model)
     info = analyzer.analyze(inputs)

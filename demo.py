@@ -65,7 +65,7 @@ class Infer:
             return float('inf')  # 两个图像完全相同
 
         # 计算 PSNR
-        max_pixel = 255.0
+        max_pixel = 1.0
         psnr = 20 * np.log10(max_pixel / np.sqrt(mse))
         return psnr
 
@@ -74,12 +74,12 @@ class Infer:
         img, img_raw = self.load_image(path)
         img = img.to(device).unsqueeze(0)
 
-        from torchanalyzer import ModelIOAnalyzer, TorchViser, FlowViser
+        # from torchanalyzer import ModelIOAnalyzer, TorchViser, FlowViser
 
-        analyzer = ModelIOAnalyzer(self.net)
-        info = analyzer.analyze(img)
-        FlowViser().show(self.net, info)
-        0/0
+        # analyzer = ModelIOAnalyzer(self.net)
+        # info = analyzer.analyze(img)
+        # FlowViser().show(self.net, info)
+        # 0/0
 
         pred = self.net(img)
         pred = pred*self.std+self.mean
@@ -96,7 +96,7 @@ class Infer:
         
         img_raw_np = np.array(img_raw)
         img_new_np = np.array(img_new)
-        print(f'{path} psnr:{self.calculate_psnr(img_raw_np, img_new_np)}')
+        #print(f'{path} psnr:{self.calculate_psnr(img_raw_np, img_new_np)}')
 
         return img_new
 
