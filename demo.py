@@ -49,7 +49,10 @@ class Infer:
         self.std = std.view(1, -1, 1, 1)
 
     def load_image(self, path):
-        img_raw = Image.open(path).convert('RGB')
+        if isinstance(path, str):
+            img_raw = Image.open(path).convert('RGB')
+        else:
+            img_raw = path
         img = self.trans(img_raw)
         return img, img_raw
     

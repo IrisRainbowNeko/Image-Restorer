@@ -1,1 +1,1 @@
-from .trans import PadResize, ShortResize
+from .trans import PadResize, ShortResize, PadToSize
